@@ -254,7 +254,7 @@
             <small>Print on A4 at 100% scale (turn OFF "fit to page"). 10 cards per sheet. Cut along the grey lines.</small>
         </div>
         <div style="display:flex;gap:8px">
-            <a href="javascript:history.back()">Back</a>
+            <a href="{{ route('admin.players.print') }}">Change selection</a>
             <button type="button" onclick="window.print()">Print</button>
         </div>
     </div>
@@ -276,7 +276,7 @@
                     <div class="info">
                         <div class="nm" @if (mb_strlen($p->name) > 18) style="font-size:3mm" @endif>{{ $p->name }}</div>
                         <div class="row"><small>Date of birth</small><span>{{ $p->dob->format('d M Y') }}</span></div>
-                        <div class="row"><small>Batch</small><span>{{ $p->batch?->name ?? '-' }}</span></div>
+                        <div class="row"><small>Group</small><span>{{ $p->age_group ?? '-' }} &middot; {{ $p->days_text }}</span></div>
                         <div class="row"><small>Parent contact</small><span>{{ $p->guardian_phone }}</span></div>
                     </div>
 

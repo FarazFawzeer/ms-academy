@@ -40,6 +40,49 @@
             color: #dc2626;
         }
 
+        /* Today's practice banner */
+        .sc-today {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 14px;
+        }
+
+        .sc-today iconify-icon {
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+
+        .sc-today.on {
+            background: rgba(15, 118, 110, .08);
+            border: 1px solid rgba(15, 118, 110, .3);
+            color: #0f766e;
+        }
+
+        .sc-today.off {
+            background: rgba(180, 83, 9, .08);
+            border: 1px solid rgba(180, 83, 9, .3);
+            color: #b45309;
+        }
+
+        .sc-today small {
+            display: block;
+            color: #64748b;
+        }
+
+        .not-today {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #b453091a;
+            color: #b45309;
+            margin-left: 4px;
+        }
+
         .act-present {
             color: #16a34a;
             font-size: 28px;
@@ -57,6 +100,24 @@
                 </div>
 
                 <div class="card-body">
+                    @if ($session)
+                        <div class="sc-today on">
+                            <iconify-icon icon="solar:calendar-mark-bold-duotone"></iconify-icon>
+                            <div><strong>Today: {{ $session->label }}</strong>
+                                <small>{{ $session->time_text }} &middot; {{ $expected }} players train today</small></div>
+                        </div>
+                    @else
+                        <div class="sc-today off">
+                            <iconify-icon icon="solar:calendar-minimalistic-bold-duotone"></iconify-icon>
+                            <div><strong>No practice today</strong>
+                                <small>Attendance can only be marked on practice days.
+                                    @if (in_array(auth()->user()->type, ['Super Admin', 'Admin']))
+                                        As an Admin you can still mark an extra session.
+                                    @endif
+                                </small></div>
+                        </div>
+                    @endif
+
                     <ul class="nav nav-pills nav-justified mb-3" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tabScan"
                                 role="tab">Scan QR</a></li>
@@ -98,7 +159,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Player</th>
-                                    <th class="d-none d-sm-table-cell">Batch</th>
+                                    <th class="d-none d-sm-table-cell">Group</th>
                                     <th>Time</th>
                                     <th class="text-end">Action</th>
                                 </tr>
@@ -116,7 +177,11 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="d-none d-sm-table-cell">{{ $a->batch_name ?? '-' }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ $a->age_group ?? '-' }}
+                                            @if ($a->is_extra)
+                                                <span class="not-today">Extra</span>
+                                            @endif
+                                        </td>
                                         <td>{{ \Carbon\Carbon::parse($a->created_at)->format('h:i A') }}</td>
                                         <td class="text-end">
                                             <button type="button" class="act-ico act-undo undo" data-id="{{ $a->id }}"
@@ -190,7 +255,7 @@
                         title = 'Marked - PAYMENT DUE';
                         sub = 'Please collect the fee (LKR {{ number_format(config('academy.fee')) }}).';
                     } else {
-                        title = 'Attendance marked';
+                        title = d.extra ? 'Marked (extra session)' : 'Attendance marked';
                         sub = 'Session ' + d.session + ' of ' + d.total + ' &middot; ' + d.balance + ' left';
                     }
                     if (d.reminder) extra = '<div class="mt-1"><span class="badge bg-warning text-dark">Renewal reminder queued</span></div>';
@@ -200,6 +265,15 @@
                 } else if (d.status === 'inactive') {
                     cls = 'warning';
                     title = 'Player is inactive';
+                } else if (d.status === 'wrong_day' || d.status === 'no_practice') {
+                    cls = 'warning';
+                    title = d.status === 'wrong_day' ? 'Not a training day for this player' : 'No practice today';
+                    sub = AC.esc(d.message || '');
+                    if (d.can_override) {
+                        extra = '<button type="button" class="btn btn-sm btn-warning mt-2" id="btnForce">Mark anyway (extra session)</button>';
+                    } else {
+                        extra = '<div class="small mt-1">Ask an Admin if this is a make-up class.</div>';
+                    }
                 } else {
                     cls = 'danger';
                     title = AC.esc(d.message || 'Not recognised');
@@ -217,7 +291,7 @@
                 resultBox.innerHTML =
                     '<div class="alert alert-' + cls + ' d-flex align-items-center gap-3 mb-0">' + who +
                     '<div><h5 class="mb-1">' + title + '</h5>' +
-                    (p.name ? '<div><strong>' + AC.esc(p.name) + '</strong> &middot; ' + AC.esc(p.no || '') + (p.batch ? ' &middot; ' + AC.esc(p.batch) : '') + '</div>' : '') +
+                    (p.name ? '<div><strong>' + AC.esc(p.name) + '</strong> &middot; ' + AC.esc(p.no || '') + (p.group ? ' &middot; ' + AC.esc(p.group) : '') + (p.days ? ' &middot; ' + AC.esc(p.days) : '') + '</div>' : '') +
                     (sub ? '<div>' + sub + '</div>' : '') + extra + payBtn + '</div></div>';
             }
 
@@ -229,11 +303,29 @@
                     '<td><div class="d-flex align-items-center gap-2"><img src="' + AC.esc(p.photo) +
                     '" class="avatar-sm rounded-circle" style="object-fit:cover" alt=""><div><h6 class="mb-0">' + AC.esc(p.name) +
                     '</h6><small class="text-muted">' + AC.esc(p.no || '') + '</small></div></div></td>' +
-                    '<td class="d-none d-sm-table-cell">' + AC.esc(p.batch || '-') + '</td>' +
+                    '<td class="d-none d-sm-table-cell">' + AC.esc(p.group || '-') + (d.extra ? ' <span class="not-today">Extra</span>' : '') + '</td>' +
                     '<td>' + AC.esc(d.time) + '</td>' +
                     '<td class="text-end"><button type="button" class="act-ico act-undo undo" data-id="' + d.attendance_id + '" title="Undo (marked by mistake)"><iconify-icon icon="solar:undo-left-round-bold-duotone"></iconify-icon></button></td>';
                 todayBody.insertBefore(tr, todayBody.firstChild);
             }
+
+            // last mark request, so an Admin can repeat it with force=1 ("Mark anyway")
+            var lastBody = null;
+
+            async function mark(body) {
+                lastBody = body;
+                handle(await AC.call(markUrl, {
+                    body: body
+                }));
+            }
+
+            resultBox.addEventListener('click', async function(e) {
+                if (!e.target.closest('#btnForce') || !lastBody) return;
+                e.target.disabled = true;
+                await mark(Object.assign({}, lastBody, {
+                    force: 1
+                }));
+            });
 
             function handle(d) {
                 if (d.status === 'marked') {
@@ -283,12 +375,9 @@
                 lastToken = token;
                 lastAt = Date.now();
 
-                var d = await AC.call(markUrl, {
-                    body: {
-                        token: token
-                    }
+                await mark({
+                    token: token
                 });
-                handle(d);
                 setTimeout(function() {
                     busy = false;
                 }, 1200);
@@ -363,7 +452,8 @@
                     return '<div class="list-group-item d-flex align-items-center gap-2">' +
                         '<img src="' + AC.esc(p.photo) + '" class="avatar-sm rounded-circle" style="object-fit:cover" alt="">' +
                         '<div class="flex-grow-1"><h6 class="mb-0">' + AC.esc(p.name) + '</h6><small class="text-muted">' +
-                        AC.esc(p.no || '') + (p.batch ? ' &middot; ' + AC.esc(p.batch) : '') + '</small></div>' +
+                        AC.esc(p.no || '') + (p.group ? ' &middot; ' + AC.esc(p.group) : '') + ' &middot; ' + AC.esc(p.days || '') +
+                        (p.not_today ? '<span class="not-today">Not today</span>' : '') + '</small></div>' +
                         '<span>' + p.badge + '</span>' +
                         '<button type="button" class="act-ico act-present mark-btn" data-id="' + p.id + '" title="Mark present"><iconify-icon icon="solar:check-circle-bold-duotone"></iconify-icon></button></div>';
                 }).join('');
@@ -373,12 +463,9 @@
                 var b = e.target.closest('.mark-btn');
                 if (!b) return;
                 b.disabled = true;
-                var d = await AC.call(markUrl, {
-                    body: {
-                        player_id: b.dataset.id
-                    }
+                await mark({
+                    player_id: b.dataset.id
                 });
-                handle(d);
                 box.value = '';
                 list.innerHTML = '';
                 box.focus();

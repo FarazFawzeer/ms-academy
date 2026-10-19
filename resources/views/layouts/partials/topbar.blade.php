@@ -163,7 +163,7 @@
                               </a>
 
                          
-                              <a class="dropdown-item" href="{{ route ('second' , ['auth','lock-screen']) }}">
+                              <a class="dropdown-item" href="{{ route('lock-screen') }}">
                                    <iconify-icon icon="solar:lock-keyhole-outline"
                                         class="align-middle me-2 fs-18"></iconify-icon><span class="align-middle">Lock
                                         screen</span>
@@ -171,11 +171,15 @@
 
                               <div class="dropdown-divider my-1"></div>
 
-                              <a class="dropdown-item text-danger" href="{{ route ('second' , ['auth','signin']) }}">
-                                   <iconify-icon icon="solar:logout-3-outline"
-                                        class="align-middle me-2 fs-18"></iconify-icon><span
-                                        class="align-middle">Logout</span>
-                              </a>
+                              <!-- logout is POST only (with CSRF), so it is a small form styled as a menu item -->
+                              <form method="POST" action="{{ route('logout') }}" class="m-0">
+                                   @csrf
+                                   <button type="submit" class="dropdown-item text-danger">
+                                        <iconify-icon icon="solar:logout-3-outline"
+                                             class="align-middle me-2 fs-18"></iconify-icon><span
+                                             class="align-middle">Logout</span>
+                                   </button>
+                              </form>
                          </div>
                     </div>
                </div>

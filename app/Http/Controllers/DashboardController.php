@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Player;
+use App\Models\PracticeSession;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -43,19 +44,25 @@ class DashboardController extends Controller
             $chart['values'][] = (int) ($raw[$day->toDateString()] ?? 0);
         }
 
-        $cols = ['id', 'player_no', 'name', 'photo_path', 'batch_id', 'guardian_name', 'guardian_phone', 'sessions_balance'];
+        $cols = ['id', 'player_no', 'name', 'dob', 'photo_path', 'guardian_name', 'guardian_phone', 'sessions_balance'];
 
-        $reminders = Player::active()->where('reminder_pending', true)->with('batch:id,name')
+        $reminders = Player::active()->where('reminder_pending', true)
             ->orderBy('name')->limit(6)->get($cols);
 
-        $dues = Player::active()->where('sessions_balance', '<', 0)->with('batch:id,name')
+        $dues = Player::active()->where('sessions_balance', '<', 0)
             ->orderBy('sessions_balance')->limit(6)->get($cols);
+
+        // today's practice (or the next one) for the strip under the quick actions
+        PracticeSession::fillAround(today());
+        $practice = PracticeSession::forDate(today());
+        $next     = $practice ?: PracticeSession::active()->where('session_date', '>', $today)->orderBy('session_date')->first();
+        $expected = $practice ? Player::active()->trainingDays($practice->slot)->count() : 0;
 
         $recent = Attendance::join('players', 'players.id', '=', 'attendances.player_id')
             ->where('attendances.attendance_date', $today)
             ->orderByDesc('attendances.id')->limit(5)
             ->get(['attendances.id', 'attendances.created_at', 'players.name', 'players.player_no', 'players.photo_path']);
 
-        return view('dashboard', compact('stats', 'chart', 'reminders', 'dues', 'recent'));
+        return view('dashboard', compact('stats', 'chart', 'reminders', 'dues', 'recent', 'practice', 'next', 'expected'));
     }
 }

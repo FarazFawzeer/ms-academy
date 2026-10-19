@@ -57,7 +57,7 @@
                         </select>
                         <div class="form-text">
                             <strong>Front Desk</strong> can scan attendance, add players and receive payments.
-                            <strong>Admin</strong> can also manage batches, coaches, salary and reports.
+                            <strong>Admin</strong> can also manage the practice schedule, coaches, salary and reports.
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">

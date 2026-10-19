@@ -14,11 +14,6 @@ class Coach extends Model
         'is_active'  => 'boolean',
     ];
 
-    public function batches(): HasMany
-    {
-        return $this->hasMany(Batch::class);
-    }
-
     public function workdays(): HasMany
     {
         return $this->hasMany(CoachWorkday::class);

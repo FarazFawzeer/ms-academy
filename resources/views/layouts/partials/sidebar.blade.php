@@ -53,7 +53,7 @@
                             <a class="sub-nav-link" href="{{ route('admin.attendance.scan') }}">Scan / Mark</a>
                         </li>
                         <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="{{ route('admin.attendance.history') }}">History</a>
+                            <a class="sub-nav-link" href="{{ route('admin.attendance.register') }}">Register</a>
                         </li>
                     </ul>
                 </div>
@@ -61,15 +61,15 @@
 
             {{-- Players --}}
             <li class="nav-item">
-                <a class="nav-link menu-arrow {{ $open('admin.players.*') ? '' : 'collapsed' }}" href="#sidebarPlayers"
+                <a class="nav-link menu-arrow {{ $open('admin.players.*', 'admin.groups.*') ? '' : 'collapsed' }}" href="#sidebarPlayers"
                     data-bs-toggle="collapse" role="button"
-                    aria-expanded="{{ $open('admin.players.*') ? 'true' : 'false' }}" aria-controls="sidebarPlayers">
+                    aria-expanded="{{ $open('admin.players.*', 'admin.groups.*') ? 'true' : 'false' }}" aria-controls="sidebarPlayers">
                     <span class="nav-icon">
                         <iconify-icon icon="solar:users-group-rounded-outline"></iconify-icon>
                     </span>
                     <span class="nav-text"> Players</span>
                 </a>
-                <div class="collapse {{ $open('admin.players.*') ? 'show' : '' }}" id="sidebarPlayers">
+                <div class="collapse {{ $open('admin.players.*', 'admin.groups.*') ? 'show' : '' }}" id="sidebarPlayers">
                     <ul class="nav sub-navbar-nav">
                         <li class="sub-nav-item">
                             <a class="sub-nav-link" href="{{ route('admin.players.index') }}">All Players</a>
@@ -78,7 +78,10 @@
                             <a class="sub-nav-link" href="{{ route('admin.players.create') }}">Add Player</a>
                         </li>
                         <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="{{ route('admin.players.cards') }}" target="_blank">Print All ID Cards</a>
+                            <a class="sub-nav-link" href="{{ route('admin.groups.index') }}">Age Groups</a>
+                        </li>
+                        <li class="sub-nav-item">
+                            <a class="sub-nav-link" href="{{ route('admin.players.print') }}">Print ID Cards</a>
                         </li>
                     </ul>
                 </div>
@@ -110,13 +113,13 @@
             @if ($isAdmin)
                 <li class="menu-title">Management...</li>
 
-                {{-- Batches --}}
+                {{-- Practice schedule --}}
                 <li class="nav-item">
-                    <a class="nav-link {{ $open('admin.batches.*') ? 'active' : '' }}" href="{{ route('admin.batches.index') }}">
+                    <a class="nav-link {{ $open('admin.schedule.*') ? 'active' : '' }}" href="{{ route('admin.schedule.index') }}">
                         <span class="nav-icon">
-                            <iconify-icon icon="solar:layers-outline"></iconify-icon>
+                            <iconify-icon icon="solar:calendar-outline"></iconify-icon>
                         </span>
-                        <span class="nav-text"> Batches </span>
+                        <span class="nav-text"> Practice Schedule </span>
                     </a>
                 </li>
 

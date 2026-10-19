@@ -73,7 +73,6 @@
                             <th>Coach</th>
                             <th class="d-none d-md-table-cell">Phone</th>
                             <th>Daily Rate (LKR)</th>
-                            <th class="d-none d-sm-table-cell">Batches</th>
                             <th>Status</th>
                             <th class="text-end">Action</th>
                         </tr>
@@ -95,7 +94,6 @@
                                 </td>
                                 <td class="d-none d-md-table-cell">{{ $c->phone ?? '-' }}</td>
                                 <td>{{ number_format($c->daily_rate) }}</td>
-                                <td class="d-none d-sm-table-cell">{{ $c->batches_count }}</td>
                                 <td>
                                     <span class="st-badge"
                                         style="background:{{ $c->is_active ? '#16a34a' : '#6b7280' }}">{{ $c->is_active ? 'Active' : 'Inactive' }}</span>
@@ -116,7 +114,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No coaches yet.</td>
+                                <td colspan="5" class="text-center text-muted py-4">No coaches yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

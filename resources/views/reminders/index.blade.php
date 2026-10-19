@@ -71,7 +71,7 @@
                                         <div>
                                             <h6 class="mb-0">{{ $p->name }}</h6>
                                             <small class="text-muted">{{ $p->player_no }} ·
-                                                {{ $p->batch?->name ?? 'No batch' }}</small>
+                                                {{ $p->age_group }}</small>
                                         </div>
                                     </div>
                                 </td>

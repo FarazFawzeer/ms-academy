@@ -12,7 +12,6 @@ class CoachController extends Controller
     public function index()
     {
         $coaches = Coach::query()
-            ->withCount('batches')
             ->orderByDesc('is_active')
             ->orderBy('name')
             ->get();

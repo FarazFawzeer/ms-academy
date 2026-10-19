@@ -121,8 +121,8 @@
                     <p class="card-subtitle mb-0">{{ $players->total() }} player(s) found.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ route('admin.players.cards', array_filter(['batch_id' => request('batch_id')])) }}"
-                        target="_blank" class="btn btn-outline-secondary">
+                    <a href="{{ route('admin.players.print', array_filter(['group' => $group])) }}"
+                        class="btn btn-outline-secondary">
                         <iconify-icon icon="solar:printer-outline" class="me-1"></iconify-icon> Print ID Cards
                     </a>
                     <a href="{{ route('admin.players.create') }}" class="btn btn-primary">
@@ -139,12 +139,20 @@
                         placeholder="Search name, ID or phone" autocomplete="off">
                 </div>
 
-                <select name="batch_id" class="form-select pl-select" onchange="this.form.submit()">
-                    <option value="">All batches</option>
-                    @foreach ($batches as $b)
-                        <option value="{{ $b->id }}" {{ request('batch_id') == $b->id ? 'selected' : '' }}>
-                            {{ $b->name }}</option>
+                <select name="group" class="form-select pl-select" onchange="this.form.submit()">
+                    <option value="">All age groups</option>
+                    @foreach ($groups as $g)
+                        <option value="{{ $g }}" {{ $group === $g ? 'selected' : '' }}>{{ $g }}</option>
                     @endforeach
+                </select>
+
+                <select name="days" class="form-select pl-select" onchange="this.form.submit()">
+                    <option value="">All training days</option>
+                    @foreach ($slots as $key => $s)
+                        <option value="{{ $key }}" {{ $days === $key ? 'selected' : '' }}>Trains on {{ $s['label'] }}</option>
+                        <option value="{{ $key }}-only" {{ $days === $key . '-only' ? 'selected' : '' }}>{{ $s['label'] }} only</option>
+                    @endforeach
+                    <option value="both" {{ $days === 'both' ? 'selected' : '' }}>Both days</option>
                 </select>
 
                 <select name="status" class="form-select pl-select" onchange="this.form.submit()">
@@ -153,7 +161,7 @@
                     <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All</option>
                 </select>
 
-                @if (request('q') || request('batch_id') || (request('status') && request('status') !== 'active'))
+                @if (request('q') || $group || $days || (request('status') && request('status') !== 'active'))
                     <a href="{{ route('admin.players.index') }}" class="pl-clear">
                         <iconify-icon icon="solar:close-circle-outline"></iconify-icon> Clear
                     </a>
@@ -167,7 +175,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>Player</th>
-                            <th class="d-none d-md-table-cell">Batch</th>
+                            <th>Group</th>
+                            <th class="d-none d-md-table-cell">Days</th>
                             <th class="d-none d-lg-table-cell">Guardian</th>
                             <th>Sessions</th>
                             <th class="text-end">Action</th>
@@ -191,7 +200,8 @@
                                         </div>
                                     </a>
                                 </td>
-                                <td class="d-none d-md-table-cell">{{ $p->batch?->name ?? '-' }}</td>
+                                <td>{{ $p->ageGroupBadge() }}</td>
+                                <td class="d-none d-md-table-cell">{{ $p->daysBadge() }}</td>
                                 <td class="d-none d-lg-table-cell">
                                     {{ $p->guardian_name }}<br>
                                     <small class="text-muted">{{ $p->guardian_phone }}</small>
@@ -218,7 +228,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">No players found.</td>
+                                <td colspan="6" class="text-center text-muted py-4">No players found.</td>
                             </tr>
                         @endforelse
                     </tbody>

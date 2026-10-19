@@ -78,22 +78,23 @@
         <div class="col-lg-5">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">By Batch</h5>
+                    <h5 class="card-title mb-0">By Age Group</h5>
+                    <p class="card-subtitle mb-0">Group on the day the player attended.</p>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Batch</th>
+                                    <th>Group</th>
                                     <th>Sessions</th>
                                     <th>Players</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($byBatch as $b)
+                                @forelse ($byGroup as $b)
                                     <tr>
-                                        <td>{{ $b->batch ?? 'No batch' }}</td>
+                                        <td>{{ \App\Models\Player::softBadge(\App\Support\AgeGroup::colour($b->grp), $b->grp ?? '-', 64) }}</td>
                                         <td>{{ number_format($b->sessions) }}</td>
                                         <td>{{ number_format($b->players) }}</td>
                                     </tr>
@@ -121,7 +122,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Player</th>
-                                    <th class="d-none d-sm-table-cell">Batch</th>
+                                    <th class="d-none d-sm-table-cell">Group</th>
                                     <th>Sessions</th>
                                     <th class="d-none d-md-table-cell">Last seen</th>
                                 </tr>
@@ -131,7 +132,7 @@
                                     <tr>
                                         <td><a href="{{ route('admin.players.show', $p->id) }}">{{ $p->name }}</a><br>
                                             <small class="text-muted">{{ $p->player_no }}</small></td>
-                                        <td class="d-none d-sm-table-cell">{{ $p->batch ?? '-' }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ $p->grp ?? '-' }}</td>
                                         <td>{{ $p->sessions }}</td>
                                         <td class="d-none d-md-table-cell">
                                             {{ $p->last_seen ? \Carbon\Carbon::parse($p->last_seen)->format('d M') : '-' }}

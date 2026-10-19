@@ -363,6 +363,41 @@
                 padding-right: .85rem;
             }
         }
+        /* Today's practice strip */
+        .ds-practice {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--ds-line);
+            background: rgba(100, 116, 139, .06);
+        }
+
+        .ds-practice.on {
+            border-color: rgba(15, 118, 110, .35);
+            background: var(--ds-teal-soft);
+        }
+
+        .ds-practice > iconify-icon {
+            font-size: 28px;
+            color: var(--ds-slate);
+        }
+
+        .ds-practice.on > iconify-icon {
+            color: var(--ds-teal);
+        }
+
+        .ds-practice strong {
+            display: block;
+            font-size: 15px;
+        }
+
+        .ds-practice span {
+            font-size: 13px;
+            color: #64748b;
+        }
     </style>
 
     <div class="ds">
@@ -378,6 +413,26 @@
             <a href="{{ route('admin.players.index') }}" class="btn btn-slate-outline">
                 <iconify-icon icon="solar:wallet-bold-duotone"></iconify-icon> Receive Payment
             </a>
+        </div>
+
+        {{-- Today's practice --}}
+        <div class="ds-practice {{ $practice ? 'on' : '' }}">
+            <iconify-icon icon="solar:calendar-mark-bold-duotone"></iconify-icon>
+            <div class="flex-grow-1">
+                @if ($practice)
+                    <strong>Today: {{ $practice->label }}</strong>
+                    <span>{{ $practice->time_text }}{{ $practice->is_moved ? ' (moved from ' . $practice->planned_date->format('D d M') . ')' : '' }}
+                        &middot; {{ $stats->today_count }} of {{ $expected }} players marked</span>
+                @elseif ($next)
+                    <strong>No practice today</strong>
+                    <span>Next: {{ $next->label }}, {{ $next->session_date->format('l d M') }} {{ $next->time_text ? '- ' . $next->time_text : '' }}</span>
+                @else
+                    <strong>No practice scheduled</strong>
+                @endif
+            </div>
+            @if ($isAdmin)
+                <a href="{{ route('admin.schedule.index') }}" class="ds-link">Schedule</a>
+            @endif
         </div>
 
         {{-- Stat cards --}}
@@ -585,7 +640,7 @@
                             <thead>
                                 <tr>
                                     <th>Player</th>
-                                    <th class="d-none d-sm-table-cell">Batch</th>
+                                    <th class="d-none d-sm-table-cell">Group</th>
                                     <th>Balance</th>
                                     <th class="text-end">Action</th>
                                 </tr>
@@ -602,7 +657,7 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="d-none d-sm-table-cell">{{ $p->batch?->name ?? '-' }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ $p->ageGroupBadge() }}</td>
                                         <td data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</td>
                                         <td class="text-end text-nowrap">
                                             <button type="button" class="act-ico act-pay" title="Receive payment"

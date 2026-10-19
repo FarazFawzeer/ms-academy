@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\AgeGroup;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\HtmlString;
 
@@ -11,7 +11,7 @@ class Player extends Model
 {
     protected $fillable = [
         'player_no', 'qr_token', 'name', 'dob', 'phone', 'guardian_name', 'guardian_phone',
-        'photo_path', 'batch_id', 'joined_at', 'sessions_balance', 'reminder_pending',
+        'training_days', 'photo_path', 'joined_at', 'sessions_balance', 'reminder_pending',
         'last_reminded_at', 'is_active',
     ];
 
@@ -23,11 +23,6 @@ class Player extends Model
         'is_active'        => 'boolean',
         'last_reminded_at' => 'datetime',
     ];
-
-    public function batch(): BelongsTo
-    {
-        return $this->belongsTo(Batch::class);
-    }
 
     public function attendances(): HasMany
     {
@@ -61,6 +56,31 @@ class Player extends Model
         });
     }
 
+    /** Players whose age TODAY puts them in this group (U8, U10 ... Senior). */
+    public function scopeInAgeGroup($q, ?string $label)
+    {
+        if (!AgeGroup::exists($label)) {
+            return $q;
+        }
+        [$after, $onOrBefore] = AgeGroup::dobRange($label);
+
+        return $q->when($after, fn ($w) => $w->where('dob', '>', $after))
+                 ->when($onOrBefore, fn ($w) => $w->where('dob', '<=', $onOrBefore));
+    }
+
+    /** 'fri' = trains on Friday (both-days players included), 'fri-only', 'sun-only', 'both'. */
+    public function scopeTrainingDays($q, ?string $filter)
+    {
+        $all = implode(',', array_keys(PracticeSession::slots()));
+
+        return match (true) {
+            $filter === 'both'                    => $q->where('training_days', $all),
+            str_ends_with((string) $filter, '-only') => $q->where('training_days', substr($filter, 0, -5)),
+            isset(PracticeSession::slots()[$filter]) => $q->where('training_days', 'like', '%' . $filter . '%'),
+            default                               => $q,
+        };
+    }
+
     /* ---------- fee / session rules ---------- */
 
     public static function perPackage(): int
@@ -84,6 +104,61 @@ class Player extends Model
         $r = $balance % $n;
 
         return $r === 0 ? $n : $n - $r;
+    }
+
+    /* ---------- training days ---------- */
+
+    /** Sorted, valid slot keys from a form value (['sun','fri'] -> 'fri,sun'). */
+    public static function normaliseDays($days): string
+    {
+        $days = array_map('strval', (array) $days);
+
+        return implode(',', array_values(array_filter(array_keys(PracticeSession::slots()), fn ($k) => in_array($k, $days, true))));
+    }
+
+    /** ['fri', 'sun'] */
+    public function getDaysAttribute(): array
+    {
+        return array_values(array_filter(explode(',', (string) $this->training_days)));
+    }
+
+    public function trainsOn(?string $slot): bool
+    {
+        return $slot !== null && in_array($slot, $this->days, true);
+    }
+
+    /** "Fri & Sun", "Friday only" */
+    public function getDaysTextAttribute(): string
+    {
+        $slots = PracticeSession::slots();
+        $days  = $this->days;
+
+        if (count($days) === 1) {
+            return ($slots[$days[0]]['label'] ?? $days[0]) . ' only';
+        }
+
+        return implode(' & ', array_map(fn ($d) => $slots[$d]['short'] ?? $d, $days)) ?: '-';
+    }
+
+    public function daysBadge(): HtmlString
+    {
+        $c = count($this->days) > 1 ? '#0f766e' : '#2563eb';
+
+        return self::softBadge($c, $this->days_text, 110);
+    }
+
+    /* ---------- age group (always from today's age) ---------- */
+
+    public function getAgeGroupAttribute(): ?string
+    {
+        return AgeGroup::forDob($this->dob);
+    }
+
+    public function ageGroupBadge(): HtmlString
+    {
+        $g = $this->age_group;
+
+        return self::softBadge(AgeGroup::colour($g), $g ?? '-', 64);
     }
 
     /* ---------- accessors / helpers ---------- */
@@ -133,10 +208,16 @@ class Player extends Model
             [$c, $txt] = ['#15803d', $b . ' left'];
         }
 
+        return self::softBadge($c, $txt, 110);
+    }
+
+    /** Shared soft-tint badge: light background, coloured text, fixed width. */
+    public static function softBadge(string $colour, string $text, int $width = 110): HtmlString
+    {
         return new HtmlString(
-            '<span class="badge" style="background:' . $c . '1a;color:' . $c
-            . ';display:inline-block;width:110px;text-align:center;font-weight:600;font-size:12px;'
-            . 'padding:6px 0;border-radius:6px;white-space:nowrap">' . e($txt) . '</span>'
+            '<span class="badge" style="background:' . $colour . '1a;color:' . $colour
+            . ';display:inline-block;width:' . $width . 'px;text-align:center;font-weight:600;font-size:12px;'
+            . 'padding:6px 0;border-radius:6px;white-space:nowrap">' . e($text) . '</span>'
         );
     }
 

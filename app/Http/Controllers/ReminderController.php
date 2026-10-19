@@ -8,11 +8,11 @@ class ReminderController extends Controller
 {
     public function index()
     {
-        $cols = ['id', 'player_no', 'name', 'photo_path', 'batch_id', 'guardian_name', 'guardian_phone',
+        $cols = ['id', 'player_no', 'name', 'dob', 'photo_path', 'guardian_name', 'guardian_phone',
             'sessions_balance', 'last_reminded_at'];
 
         $pending = Player::active()->where('reminder_pending', true)
-            ->with('batch:id,name')->orderBy('name')->get($cols);
+            ->orderBy('name')->get($cols);
 
         $recent = Player::whereNotNull('last_reminded_at')
             ->orderByDesc('last_reminded_at')->limit(10)->get(['id', 'player_no', 'name', 'guardian_name', 'last_reminded_at']);

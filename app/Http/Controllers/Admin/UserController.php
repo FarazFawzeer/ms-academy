@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\ImageUpload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -31,7 +31,7 @@ class UserController extends Controller
             'email'      => 'required|string|email|max:255|unique:users',
             'password'   => 'required|string|min:6|confirmed',
             'type'       => ['required', Rule::in(self::TYPES)],
-            'image_path' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'image_path' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:8192',
         ]);
 
         if ($validator->fails()) {
@@ -44,12 +44,13 @@ class UserController extends Controller
         $data = $request->only(['name', 'email', 'type']);
         $data['password'] = Hash::make($request->password);
 
-        // Handle profile image
+        // Profile image: re-saved as a small JPEG with a random name (never the uploaded file name/extension)
         if ($request->hasFile('image_path')) {
-            $file = $request->file('image_path');
-            $filename = time() . '_' . Str::slug($data['name']) . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/users'), $filename);
-            $data['image_path'] = 'uploads/users/' . $filename;
+            try {
+                $data['image_path'] = ImageUpload::square($request->file('image_path'), 'uploads/users');
+            } catch (\RuntimeException $e) {
+                return response()->json(['success' => false, 'errors' => ['image_path' => [$e->getMessage()]]], 422);
+            }
         }
 
         $user = User::create($data);
@@ -78,6 +79,7 @@ class UserController extends Controller
             ]);
         }
 
+        ImageUpload::delete($user->image_path);
         $user->delete();
 
         return response()->json([

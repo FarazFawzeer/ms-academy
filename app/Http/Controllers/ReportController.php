@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ReportExport;
+use App\Support\AgeGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -24,13 +25,15 @@ class ReportController extends Controller
               (SELECT COUNT(*) FROM players WHERE joined_at BETWEEN ? AND ?)                          AS new_players
         ", [$from, $to, $fromTs, $toTs, $from, $to, $from, $to]);
 
-        $byBatch = DB::table('attendances as a')
-            ->leftJoin('batches as b', 'b.id', '=', 'a.batch_id')
+        // age group as it was on the day of each attendance, youngest group first
+        $order   = array_flip(AgeGroup::all());
+        $byGroup = DB::table('attendances as a')
             ->whereBetween('a.attendance_date', [$from, $to])
-            ->groupBy('b.id', 'b.name')
-            ->selectRaw('b.name as batch, COUNT(*) as sessions, COUNT(DISTINCT a.player_id) as players')
-            ->orderByDesc('sessions')
-            ->get();
+            ->groupBy('a.age_group')
+            ->selectRaw('a.age_group as grp, COUNT(*) as sessions, COUNT(DISTINCT a.player_id) as players')
+            ->get()
+            ->sortBy(fn ($r) => $order[$r->grp] ?? 99)
+            ->values();
 
         $byPlayer = DB::table('players as p')
             ->leftJoin('attendances as a', function ($j) use ($from, $to) {
@@ -38,15 +41,15 @@ class ReportController extends Controller
                   ->where('a.attendance_date', '>=', $from)
                   ->where('a.attendance_date', '<=', $to);
             })
-            ->leftJoin('batches as b', 'b.id', '=', 'p.batch_id')
             ->where('p.is_active', 1)
-            ->groupBy('p.id', 'p.player_no', 'p.name', 'b.name')
-            ->selectRaw('p.id, p.player_no, p.name, b.name as batch, COUNT(a.id) as sessions, MAX(a.attendance_date) as last_seen')
+            ->groupBy('p.id', 'p.player_no', 'p.name', 'p.dob')
+            ->selectRaw('p.id, p.player_no, p.name, p.dob, COUNT(a.id) as sessions, MAX(a.attendance_date) as last_seen')
             ->orderByDesc('sessions')->orderBy('p.name')
             ->limit(300)
-            ->get();
+            ->get()
+            ->each(fn ($r) => $r->grp = AgeGroup::forDob($r->dob));
 
-        return view('reports.index', compact('sum', 'byBatch', 'byPlayer', 'from', 'to'));
+        return view('reports.index', compact('sum', 'byGroup', 'byPlayer', 'from', 'to'));
     }
 
     public function export(Request $request, string $type)
@@ -57,12 +60,11 @@ class ReportController extends Controller
             case 'attendance':
                 $rows = DB::table('attendances as a')
                     ->join('players as p', 'p.id', '=', 'a.player_id')
-                    ->leftJoin('batches as b', 'b.id', '=', 'a.batch_id')
                     ->whereBetween('a.attendance_date', [$from, $to])
                     ->orderBy('a.attendance_date')->orderBy('p.name')
-                    ->get(['a.attendance_date', 'p.player_no', 'p.name', 'b.name as batch', 'a.method'])
-                    ->map(fn ($r) => (array) $r);
-                $headings = ['Date', 'Player No', 'Player', 'Batch', 'Method'];
+                    ->get(['a.attendance_date', 'p.player_no', 'p.name', 'a.age_group', 'a.method', 'a.is_extra'])
+                    ->map(fn ($r) => [$r->attendance_date, $r->player_no, $r->name, $r->age_group, $r->method, $r->is_extra ? 'Extra' : '']);
+                $headings = ['Date', 'Player No', 'Player', 'Group', 'Method', 'Extra day'];
                 break;
 
             case 'payments':

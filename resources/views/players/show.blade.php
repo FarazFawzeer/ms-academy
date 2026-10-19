@@ -14,7 +14,10 @@
                     <img src="{{ $player->photo_url }}" alt="{{ $player->name }}" class="rounded-circle mb-3"
                         style="width:120px;height:120px;object-fit:cover">
                     <h4 class="mb-1">{{ $player->name }}</h4>
-                    <p class="text-muted mb-2">{{ $player->player_no }} · {{ $player->batch?->name ?? 'No batch' }}</p>
+                    <p class="text-muted mb-2">{{ $player->player_no }}</p>
+                    <div class="d-flex justify-content-center gap-2 mb-2">
+                        {{ $player->ageGroupBadge() }} {{ $player->daysBadge() }}
+                    </div>
                     <span class="badge bg-{{ $player->is_active ? 'success' : 'secondary' }}"
                         id="statusBadge">{{ $player->is_active ? 'Active' : 'Inactive' }}</span>
 
@@ -22,7 +25,12 @@
 
                     <div class="text-start">
                         <p class="mb-2"><span class="text-muted">Date of birth</span><br>
-                            {{ $player->dob->format('d M Y') }} ({{ $player->age }} yrs)</p>
+                            {{ $player->dob->format('d M Y') }} ({{ $player->age }} yrs)
+                            @if ($nextMove)
+                                <br><small class="text-muted">Moves to the next age group on
+                                    {{ $nextMove->format('d M Y') }}</small>
+                            @endif
+                        </p>
                         <p class="mb-2"><span class="text-muted">Parent / Guardian</span><br>
                             {{ $player->guardian_name }}</p>
                         <p class="mb-2"><span class="text-muted">Parent number</span><br>
@@ -124,6 +132,7 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Time</th>
+                                    <th class="d-none d-sm-table-cell">Group</th>
                                     <th>How</th>
                                 </tr>
                             </thead>
@@ -132,11 +141,16 @@
                                     <tr>
                                         <td>{{ $a->attendance_date->format('D, d M Y') }}</td>
                                         <td>{{ $a->created_at?->format('h:i A') }}</td>
-                                        <td>{{ $a->method === 'qr' ? 'QR scan' : 'Manual' }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ $a->age_group ?? '-' }}</td>
+                                        <td>{{ $a->method === 'qr' ? 'QR scan' : 'Manual' }}
+                                            @if ($a->is_extra)
+                                                <span class="badge ms-1" style="background:#2563eb1a;color:#2563eb">Extra day</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted">No attendance yet.</td>
+                                        <td colspan="4" class="text-center text-muted">No attendance yet.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
