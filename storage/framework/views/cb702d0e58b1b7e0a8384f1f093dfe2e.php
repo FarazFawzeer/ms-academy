@@ -61,30 +61,12 @@
 
             
             <li class="nav-item">
-                <a class="nav-link menu-arrow <?php echo e($open('admin.players.*', 'admin.groups.*') ? '' : 'collapsed'); ?>" href="#sidebarPlayers"
-                    data-bs-toggle="collapse" role="button"
-                    aria-expanded="<?php echo e($open('admin.players.*', 'admin.groups.*') ? 'true' : 'false'); ?>" aria-controls="sidebarPlayers">
+                <a class="nav-link <?php echo e($open('admin.players.*', 'admin.groups.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.players.index')); ?>">
                     <span class="nav-icon">
                         <iconify-icon icon="solar:users-group-rounded-outline"></iconify-icon>
                     </span>
-                    <span class="nav-text"> Players</span>
+                    <span class="nav-text"> Players </span>
                 </a>
-                <div class="collapse <?php echo e($open('admin.players.*', 'admin.groups.*') ? 'show' : ''); ?>" id="sidebarPlayers">
-                    <ul class="nav sub-navbar-nav">
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="<?php echo e(route('admin.players.index')); ?>">All Players</a>
-                        </li>
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="<?php echo e(route('admin.players.create')); ?>">Add Player</a>
-                        </li>
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="<?php echo e(route('admin.groups.index')); ?>">Age Groups</a>
-                        </li>
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="<?php echo e(route('admin.players.print')); ?>">Print ID Cards</a>
-                        </li>
-                    </ul>
-                </div>
             </li>
 
             
@@ -125,30 +107,12 @@
 
                 
                 <li class="nav-item">
-                    <a class="nav-link menu-arrow <?php echo e($open('admin.coaches.*') ? '' : 'collapsed'); ?>" href="#sidebarCoaches"
-                        data-bs-toggle="collapse" role="button"
-                        aria-expanded="<?php echo e($open('admin.coaches.*') ? 'true' : 'false'); ?>" aria-controls="sidebarCoaches">
+                    <a class="nav-link <?php echo e($open('admin.coaches.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.coaches.index')); ?>">
                         <span class="nav-icon">
                             <iconify-icon icon="solar:user-id-outline"></iconify-icon>
                         </span>
-                        <span class="nav-text"> Coaches</span>
+                        <span class="nav-text"> Coaches </span>
                     </a>
-                    <div class="collapse <?php echo e($open('admin.coaches.*') ? 'show' : ''); ?>" id="sidebarCoaches">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="<?php echo e(route('admin.coaches.index')); ?>">All Coaches</a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="<?php echo e(route('admin.coaches.create')); ?>">Add Coach</a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="<?php echo e(route('admin.coaches.workdays')); ?>">Daily Attendance</a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="<?php echo e(route('admin.coaches.salary')); ?>">Salary</a>
-                            </li>
-                        </ul>
-                    </div>
                 </li>
 
                 

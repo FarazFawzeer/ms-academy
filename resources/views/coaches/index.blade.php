@@ -5,39 +5,10 @@
     @include('partials.js-helpers')
 
     <style>
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-edit {
-            color: #f59e0b;
-        }
 
-        .act-off {
-            color: #dc2626;
-        }
 
-        .act-on {
-            color: #16a34a;
-        }
 
         .st-badge {
             display: inline-block;
@@ -58,9 +29,14 @@
                 <p class="card-subtitle mb-0">Coaches are paid a fixed amount for each day they work.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a href="{{ route('admin.coaches.workdays') }}" class="btn btn-outline-primary">Daily Attendance</a>
-                <a href="{{ route('admin.coaches.create') }}" class="btn btn-primary">
-                    <iconify-icon icon="solar:user-plus-outline" class="me-1"></iconify-icon> Add Coach
+                <a href="{{ route('admin.coaches.workdays') }}" class="btn btn-outline-primary ac-btn">
+                    <iconify-icon icon="solar:calendar-mark-outline"></iconify-icon> Daily Attendance
+                </a>
+                <a href="{{ route('admin.coaches.salary') }}" class="btn btn-outline-primary ac-btn">
+                    <iconify-icon icon="solar:wallet-money-outline"></iconify-icon> Salary
+                </a>
+                <a href="{{ route('admin.coaches.create') }}" class="btn btn-primary ac-btn">
+                    <iconify-icon icon="solar:user-plus-outline"></iconify-icon> Add Coach
                 </a>
             </div>
         </div>
@@ -72,44 +48,56 @@
                         <tr>
                             <th>Coach</th>
                             <th class="d-none d-md-table-cell">Phone</th>
-                            <th>Daily Rate (LKR)</th>
-                            <th>Status</th>
-                            <th class="text-end">Action</th>
+                            <th class="d-none d-sm-table-cell">Daily Rate (LKR)</th>
+                            <th class="d-none d-sm-table-cell">Status</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($coaches as $c)
                             <tr>
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ $c->photo_url }}" class="avatar-sm rounded-circle"
-                                            style="object-fit:cover" alt="">
-                                        <div>
-                                            <h6 class="mb-0">{{ $c->name }}</h6>
+                                    <span class="ac-person">
+                                        <img src="{{ $c->photo_url }}" alt="">
+                                        <span>
+                                            <span class="nm d-block">{{ $c->name }}</span>
                                             @if ($c->nic)
-                                                <small class="text-muted">NIC {{ $c->nic }}</small>
+                                                <span class="sub d-none d-sm-block">NIC {{ $c->nic }}</span>
                                             @endif
-                                        </div>
-                                    </div>
+                                            {{-- phones: rate and status under the name --}}
+                                            <span class="sub d-block d-sm-none">LKR {{ number_format($c->daily_rate) }} / day</span>
+                                            <span class="d-block d-sm-none mt-1">{{ \App\Models\Player::softBadge($c->is_active ? '#15803d' : '#4b5563', $c->is_active ? 'Active' : 'Inactive', 80) }}</span>
+                                        </span>
+                                    </span>
                                 </td>
                                 <td class="d-none d-md-table-cell">{{ $c->phone ?? '-' }}</td>
-                                <td>{{ number_format($c->daily_rate) }}</td>
-                                <td>
-                                    <span class="st-badge"
-                                        style="background:{{ $c->is_active ? '#16a34a' : '#6b7280' }}">{{ $c->is_active ? 'Active' : 'Inactive' }}</span>
+                                <td class="d-none d-sm-table-cell">{{ number_format($c->daily_rate) }}</td>
+                                <td class="d-none d-sm-table-cell">
+                                    {{ \App\Models\Player::softBadge($c->is_active ? '#15803d' : '#4b5563', $c->is_active ? 'Active' : 'Inactive', 80) }}
                                 </td>
-                                <td class="text-end text-nowrap">
-                                    <a href="{{ route('admin.coaches.edit', $c) }}" class="act-ico act-edit"
-                                        title="Edit coach">
-                                        <iconify-icon icon="solar:pen-bold-duotone"></iconify-icon>
-                                    </a>
-                                    <button type="button"
-                                        class="act-ico btn-toggle {{ $c->is_active ? 'act-off' : 'act-on' }}"
-                                        data-id="{{ $c->id }}" data-active="{{ $c->is_active ? 1 : 0 }}"
-                                        title="{{ $c->is_active ? 'Deactivate coach' : 'Activate coach' }}">
-                                        <iconify-icon
-                                            icon="{{ $c->is_active ? 'solar:user-block-bold-duotone' : 'solar:user-check-bold-duotone' }}"></iconify-icon>
-                                    </button>
+                                <td>
+                                    <div class="ac-actions">
+                                        <a href="{{ route('admin.coaches.edit', $c) }}" class="btn btn-sm btn-soft-primary">
+                                            <iconify-icon icon="solar:pen-outline"></iconify-icon><span>Edit</span>
+                                        </a>
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-soft-secondary ac-more"
+                                                data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions" title="More actions">
+                                                <iconify-icon icon="solar:menu-dots-bold"></iconify-icon>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="{{ route('admin.coaches.workdays') }}">
+                                                        <iconify-icon icon="solar:calendar-mark-outline"></iconify-icon> Daily attendance</a></li>
+                                                <li><a class="dropdown-item" href="{{ route('admin.coaches.salary') }}">
+                                                        <iconify-icon icon="solar:wallet-money-outline"></iconify-icon> Salary</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><button type="button" class="dropdown-item btn-toggle {{ $c->is_active ? 'text-danger' : 'text-success' }}"
+                                                        data-id="{{ $c->id }}" data-active="{{ $c->is_active ? 1 : 0 }}">
+                                                        <iconify-icon icon="{{ $c->is_active ? 'solar:user-block-outline' : 'solar:user-check-outline' }}"></iconify-icon>
+                                                        {{ $c->is_active ? 'Deactivate coach' : 'Activate coach' }}</button></li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

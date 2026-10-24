@@ -21,3 +21,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# deploy.bat: private login settings and upload logs
+/deploy/config.bat
+/deploy/logs/

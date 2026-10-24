@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('content'); ?>
     <?php echo $__env->make('layouts.partials.page-title', ['title' => config('academy.name'), 'subtitle' => 'Dashboard'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <?php echo $__env->make('partials.js-helpers', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
@@ -321,30 +319,8 @@
         }
 
         /* action icons: no background */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-pay {
-            color: #16a34a;
-        }
 
         .empty-row {
             padding: 28px 12px !important;
@@ -590,8 +566,8 @@
                             <thead>
                                 <tr>
                                     <th>Player</th>
-                                    <th class="d-none d-sm-table-cell">Guardian</th>
-                                    <th class="text-end">Action</th>
+                                    <th class="d-none d-sm-table-cell">Parent</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -610,13 +586,15 @@
                                             <div class="nm" style="font-size:14px"><?php echo e($p->guardian_name); ?></div>
                                             <div class="text-muted" style="font-size:12px"><?php echo e($p->guardian_phone); ?></div>
                                         </td>
-                                        <td class="text-end text-nowrap">
-                                            <?php if($p->whatsappLink()): ?>
-                                                <a href="<?php echo e($p->whatsappLink()); ?>" target="_blank" rel="noopener"
-                                                    class="act-ico" title="Send WhatsApp reminder">
-                                                    <iconify-icon icon="logos:whatsapp-icon"></iconify-icon>
-                                                </a>
-                                            <?php endif; ?>
+                                        <td>
+                                            <div class="ac-actions">
+                                                <?php if($p->whatsappLink()): ?>
+                                                    <a href="<?php echo e($p->whatsappLink()); ?>" target="_blank" rel="noopener"
+                                                        class="btn btn-sm btn-soft-success">
+                                                        <iconify-icon icon="ic:baseline-whatsapp"></iconify-icon><span>Send</span>
+                                                    </a>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
@@ -642,8 +620,8 @@
                                 <tr>
                                     <th>Player</th>
                                     <th class="d-none d-sm-table-cell">Group</th>
-                                    <th>Balance</th>
-                                    <th class="text-end">Action</th>
+                                    <th class="d-none d-sm-table-cell">Balance</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -655,16 +633,19 @@
                                                 <div>
                                                     <div class="nm"><?php echo e($p->name); ?></div>
                                                     <div class="sub"><?php echo e($p->player_no); ?></div>
+                                                    <div class="d-sm-none mt-1" data-balance="<?php echo e($p->id); ?>"><?php echo e($p->balanceBadge()); ?></div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="d-none d-sm-table-cell"><?php echo e($p->ageGroupBadge()); ?></td>
-                                        <td data-balance="<?php echo e($p->id); ?>"><?php echo e($p->balanceBadge()); ?></td>
-                                        <td class="text-end text-nowrap">
-                                            <button type="button" class="act-ico act-pay" title="Receive payment"
-                                                onclick="openPayment(<?php echo e($p->id); ?>, <?php echo \Illuminate\Support\Js::from($p->name)->toHtml() ?>)">
-                                                <iconify-icon icon="solar:wallet-bold-duotone"></iconify-icon>
-                                            </button>
+                                        <td class="d-none d-sm-table-cell" data-balance="<?php echo e($p->id); ?>"><?php echo e($p->balanceBadge()); ?></td>
+                                        <td>
+                                            <div class="ac-actions">
+                                                <button type="button" class="btn btn-sm btn-soft-success"
+                                                    onclick="openPayment(<?php echo e($p->id); ?>, <?php echo \Illuminate\Support\Js::from($p->name)->toHtml() ?>, <?php echo \Illuminate\Support\Js::from($p->plan())->toHtml() ?>)">
+                                                    <iconify-icon icon="solar:wallet-money-outline"></iconify-icon><span>Pay</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>

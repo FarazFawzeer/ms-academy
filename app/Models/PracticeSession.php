@@ -19,6 +19,7 @@ class PracticeSession extends Model
         'planned_date' => 'date',
         'session_date' => 'date',
         'is_cancelled' => 'boolean',
+        'closed_at'    => 'datetime',
     ];
 
     /* ---------- dates are always stored as plain Y-m-d (exact-date lookups depend on it) ---------- */
@@ -105,6 +106,74 @@ class PracticeSession extends Model
         self::generate($date, $date);
 
         return static::where('session_date', $date)->where('is_cancelled', false)->orderBy('start_time')->first();
+    }
+
+    /* ---------- settling finished practice days ---------- */
+
+    /**
+     * Settles every finished practice day once (runs on each page load, costs one small query
+     * when there is nothing to do). For each active player who trains on that day, joined by then
+     * and was not marked present: an absence is written and, if they still have sessions left,
+     * one session is used. A used-up package is not taken below 0 by absences.
+     */
+    public static function closePending(): int
+    {
+        $today = today()->toDateString();
+        $start = Carbon::parse(config('academy.schedule_start', $today))->toDateString();
+
+        // make sure last week's regular days exist even if nobody opened the schedule
+        self::generate(today()->subDays(14), today()->subDay());
+
+        $ids = static::where('is_cancelled', false)
+            ->whereNull('closed_at')
+            ->where('session_date', '<', $today)
+            ->where('session_date', '>=', $start)
+            ->orderBy('session_date')
+            ->pluck('id');
+
+        $closed = 0;
+        foreach ($ids as $id) {
+            DB::transaction(function () use ($id, &$closed) {
+                // claim the day first: two requests at the same moment can never settle it twice
+                if (!DB::table('practice_sessions')->where('id', $id)->whereNull('closed_at')->update(['closed_at' => now()])) {
+                    return;
+                }
+                $closed++;
+
+                $s       = static::find($id);
+                $date    = $s->session_date->toDateString();
+                $present = Attendance::where('attendance_date', $date)->pluck('player_id')->flip();
+
+                $players = Player::active()
+                    ->trainingDays($s->slot)
+                    ->where(fn ($q) => $q->whereNull('joined_at')->orWhere('joined_at', '<=', $date))
+                    ->get(['id', 'dob', 'training_days', 'sessions_balance']);
+
+                foreach ($players as $p) {
+                    if (isset($present[$p->id])) {
+                        continue;
+                    }
+                    $counted = (int) $p->sessions_balance > 0;
+
+                    $inserted = DB::table('absences')->insertOrIgnore([
+                        'player_id'       => $p->id,
+                        'age_group'       => \App\Support\AgeGroup::forDob($p->dob, $date),
+                        'attendance_date' => $date,
+                        'counted'         => $counted,
+                        'created_at'      => now(),
+                    ]);
+
+                    if ($inserted && $counted) {
+                        DB::table('players')->where('id', $p->id)->decrement('sessions_balance');
+                        if ((int) $p->sessions_balance - 1 === $p->remindThreshold()) {
+                            DB::table('players')->where('id', $p->id)->update(['reminder_pending' => true]);
+                        }
+                    }
+                }
+            });
+        }
+
+        return $closed;
     }
 
     /* ---------- helpers ---------- */

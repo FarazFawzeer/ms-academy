@@ -64,6 +64,107 @@
             outline-offset: 2px;
         }
 
+        .pl-plan {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f766e;
+            background: rgba(15, 118, 110, .08);
+            border-radius: 8px;
+            padding: 6px 10px;
+        }
+
+        /* Payment on joining: three choice tiles */
+        .pay-pick {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .pay-pick input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .pay-pick label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
+            transition: all .12s ease;
+            margin: 0;
+        }
+
+        .pay-pick label iconify-icon {
+            font-size: 24px;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+
+        .pay-pick strong {
+            display: block;
+            font-size: 14px;
+            color: #334155;
+        }
+
+        .pay-pick small {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .pay-pick input:checked + label {
+            border-color: #0f766e;
+            background: rgba(15, 118, 110, .06);
+        }
+
+        .pay-pick input:checked + label iconify-icon,
+        .pay-pick input:checked + label strong {
+            color: #0f766e;
+        }
+
+        .pay-pick input:focus-visible + label {
+            outline: 2px solid #0f766e;
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 575.98px) {
+            .pay-pick {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .before-box {
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 14px;
+            background: rgba(100, 116, 139, .04);
+        }
+
+        .stepper {
+            max-width: 200px;
+        }
+
+        .stepper .btn {
+            width: 44px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .used-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 10px;
+        }
+
         .grp-pill {
             display: inline-block;
             min-width: 64px;
@@ -98,7 +199,7 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="dob" class="form-label">Date of Birth</label>
-                        <input type="date" id="dob" name="dob" class="form-control"
+                        <input type="date" id="dob" name="dob" class="form-control" data-picker="dob"
                             value="{{ $player?->dob?->format('Y-m-d') }}" max="{{ today()->subDay()->toDateString() }}"
                             required>
                         <div class="form-text" id="groupHint">
@@ -122,6 +223,7 @@
                         @endforeach
                     </div>
                     <div class="form-text">Pick one or both. The player can only be marked present on these days.</div>
+                    <div class="pl-plan mt-2" id="planHint"></div>
                 </div>
 
                 <div class="row">
@@ -166,14 +268,45 @@
                 </div>
 
                 @unless ($player)
-                    <div class="form-check form-switch mb-4">
-                        <input class="form-check-input" type="checkbox" role="switch" id="collect_fee" name="collect_fee"
-                            value="1" checked>
-                        <label class="form-check-label" for="collect_fee">
-                            First payment received now
-                            (LKR {{ number_format(config('academy.fee')) }} for {{ config('academy.sessions_per_package') }}
-                            sessions)
-                        </label>
+                    {{-- Payment on joining --}}
+                    <div class="mb-4">
+                        <label class="form-label d-block">Payment on joining</label>
+                        <div class="pay-pick">
+                            <input type="radio" name="payment_mode" id="pm_now" value="now" checked>
+                            <label for="pm_now"><iconify-icon icon="solar:wallet-money-outline"></iconify-icon>
+                                <span><strong>Paying now</strong><small class="pm-fee"></small></span></label>
+
+                            <input type="radio" name="payment_mode" id="pm_before" value="before">
+                            <label for="pm_before"><iconify-icon icon="solar:history-outline"></iconify-icon>
+                                <span><strong>Already paid before</strong><small>Some sessions already done</small></span></label>
+
+                            <input type="radio" name="payment_mode" id="pm_none" value="none">
+                            <label for="pm_none"><iconify-icon icon="solar:clock-circle-outline"></iconify-icon>
+                                <span><strong>Not paid yet</strong><small>Collect later</small></span></label>
+                        </div>
+
+                        {{-- player who paid before the system started --}}
+                        <div class="before-box mt-3 d-none" id="beforeBox">
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="paid_on">Paid on <span class="text-muted">(optional)</span></label>
+                                    <input type="date" id="paid_on" name="paid_on" class="form-control"
+                                        max="{{ today()->toDateString() }}">
+                                    <div class="form-text">Leave empty if you don't know. Today's date is used.</div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="used">Sessions already done</label>
+                                    <div class="input-group stepper">
+                                        <button type="button" class="btn btn-outline-secondary" data-step="-1" aria-label="One less">&minus;</button>
+                                        <input type="number" id="used" name="used" class="form-control text-center" value="0"
+                                            min="0" max="8" inputmode="numeric">
+                                        <button type="button" class="btn btn-outline-secondary" data-step="1" aria-label="One more">+</button>
+                                    </div>
+                                    <div class="form-text" id="usedHint"></div>
+                                </div>
+                            </div>
+                            <div id="usedDates" class="mt-3"></div>
+                        </div>
                     </div>
                 @endunless
 
@@ -188,6 +321,85 @@
 
     <script>
         AC.form(document.getElementById('playerForm'));
+
+        // Fee plan follows the training days; "Already paid before" asks how many sessions are done
+        (function() {
+            var plans = @json(config('academy.plans'));
+            var order = @json(array_keys($slots));
+            var hint = document.getElementById('planHint');
+            var dayBoxes = document.querySelectorAll('input[name="days[]"]');
+            var before = document.getElementById('beforeBox');
+            var used = document.getElementById('used');
+            var datesBox = document.getElementById('usedDates');
+
+            function plan() {
+                var picked = order.filter(function(k) {
+                    return document.getElementById('day_' + k).checked;
+                });
+                return plans[picked.join(',')] || null;
+            }
+
+            function showPlan() {
+                var p = plan();
+                hint.innerHTML = p ? '<iconify-icon icon="solar:tag-price-outline"></iconify-icon> ' + AC.esc(p.label) +
+                    ': LKR ' + AC.fmt(p.fee) + ' for ' + p.sessions + ' sessions' : '';
+                hint.classList.toggle('d-none', !p);
+                document.querySelectorAll('.pm-fee').forEach(function(el) {
+                    el.textContent = p ? 'LKR ' + AC.fmt(p.fee) + ' today' : '';
+                });
+                if (used) {
+                    used.max = p ? p.sessions : 8;
+                    if (+used.value > +used.max) used.value = used.max;
+                    drawDates();
+                }
+            }
+
+            // one optional date field per session already done (typed dates are kept when the number changes)
+            function drawDates() {
+                if (!datesBox) return;
+                var n = Math.max(0, Math.min(+used.value || 0, +used.max));
+                var p = plan();
+                document.getElementById('usedHint').textContent = p ?
+                    (p.sessions - n) + ' of ' + p.sessions + ' sessions will be left' : '';
+
+                var keep = Array.from(datesBox.querySelectorAll('input[name="used_dates[]"]')).map(function(i) {
+                    return i.value;
+                });
+                if (!n) {
+                    datesBox.innerHTML = '';
+                    return;
+                }
+                var html = '<label class="form-label d-block">Dates of those sessions <span class="text-muted">(optional - fill the ones you know)</span></label><div class="used-grid">';
+                for (var i = 0; i < n; i++) {
+                    html += '<div><input type="date" name="used_dates[]" class="form-control" max="{{ today()->toDateString() }}" ' +
+                        'value="' + AC.esc(keep[i] || '') + '" placeholder="Session ' + (i + 1) + '" aria-label="Session ' + (i + 1) + ' date"></div>';
+                }
+                datesBox.innerHTML = html + '</div>';
+                if (window.ACDate) ACDate.enhance(datesBox);
+            }
+
+            dayBoxes.forEach(function(b) {
+                b.addEventListener('change', showPlan);
+            });
+
+            document.querySelectorAll('input[name=payment_mode]').forEach(function(r) {
+                r.addEventListener('change', function() {
+                    before.classList.toggle('d-none', r.value !== 'before' || !r.checked);
+                });
+            });
+
+            if (used) {
+                used.addEventListener('input', drawDates);
+                document.querySelectorAll('.stepper [data-step]').forEach(function(b) {
+                    b.addEventListener('click', function() {
+                        used.value = Math.max(0, Math.min(+used.max, (+used.value || 0) + (+b.dataset.step)));
+                        drawDates();
+                    });
+                });
+            }
+
+            showPlan();
+        })();
 
         document.getElementById('photo').addEventListener('change', function() {
             var f = this.files[0],

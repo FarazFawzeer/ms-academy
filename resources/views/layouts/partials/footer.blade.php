@@ -2,11 +2,7 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-12 text-center">
-                <p class="mb-0">
-                    <script>
-                        document.write(new Date().getFullYear())
-                    </script> &copy; VacayGuider</a>
-                </p>
+                <p class="mb-0">{{ date('Y') }} &copy; {{ config('academy.name') }}</p>
             </div>
         </div>
     </div>

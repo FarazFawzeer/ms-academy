@@ -275,9 +275,14 @@
     </style>
 
     <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Print ID Cards</h5>
-            <p class="card-subtitle mb-0">Choose which cards to print. They open in a new tab, 10 cards per A4 sheet.</p>
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div>
+                <h5 class="card-title mb-0">Print ID Cards</h5>
+                <p class="card-subtitle mb-0">Choose which cards to print. They open in a new tab, 10 cards per A4 sheet.</p>
+            </div>
+            <a href="<?php echo e(route('admin.players.index')); ?>" class="btn btn-light ac-btn">
+                <iconify-icon icon="solar:arrow-left-outline"></iconify-icon> All Players
+            </a>
         </div>
 
         <div class="card-body">

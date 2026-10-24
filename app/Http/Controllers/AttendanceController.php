@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ReportExport;
+use App\Models\Absence;
 use App\Models\Attendance;
 use App\Models\Player;
 use App\Models\PracticeSession;
@@ -59,6 +60,8 @@ class AttendanceController extends Controller
             'photo' => $player->photo_url,
             'group' => $player->age_group,
             'days'  => $player->days_text,
+            'fee'   => $player->planFee(),
+            'plan'  => $player->planSessions(),
         ];
 
         if (!$player->is_active) {
@@ -109,7 +112,7 @@ class AttendanceController extends Controller
                 DB::table('players')->where('id', $player->id)->decrement('sessions_balance');
                 $balance = (int) DB::table('players')->where('id', $player->id)->value('sessions_balance');
 
-                $remind = $balance === Player::remindThreshold();
+                $remind = $balance === $player->remindThreshold();
                 if ($remind) {
                     DB::table('players')->where('id', $player->id)->update(['reminder_pending' => true]);
                 }
@@ -131,8 +134,8 @@ class AttendanceController extends Controller
             'player'        => $info,
             'attendance_id' => $attendanceId,
             'extra'         => $extra,
-            'session'       => $balance < 0 ? null : Player::sessionNumber($balance),
-            'total'         => Player::perPackage(),
+            'session'       => $balance < 0 ? null : $player->sessionNumber($balance),
+            'total'         => $player->planSessions(),
             'balance'       => $balance,
             'payment_due'   => $balance < 0,
             'reminder'      => $remind,
@@ -185,12 +188,14 @@ class AttendanceController extends Controller
             return response()->json(['success' => false, 'message' => 'Only today\'s attendance can be undone.'], 422);
         }
 
-        DB::transaction(function () use ($attendance) {
+        $player = Player::find($attendance->player_id, ['id', 'training_days']);
+
+        DB::transaction(function () use ($attendance, $player) {
             DB::table('attendances')->where('id', $attendance->id)->delete();
             DB::table('players')->where('id', $attendance->player_id)->increment('sessions_balance');
 
             $balance = (int) DB::table('players')->where('id', $attendance->player_id)->value('sessions_balance');
-            if ($balance > Player::remindThreshold()) {
+            if ($player && $balance > $player->remindThreshold()) {
                 DB::table('players')->where('id', $attendance->player_id)->update(['reminder_pending' => false]);
             }
         });
@@ -213,7 +218,7 @@ class AttendanceController extends Controller
     public function registerExport(Request $request)
     {
         $d    = $this->registerData($request);
-        $mark = ['P' => 'P', 'E' => 'P (extra)', 'A' => 'AB', 'X' => 'No practice', 'N' => '-', 'F' => ''];
+        $mark = ['P' => 'P', 'E' => 'P (extra)', 'A' => 'AB', 'U' => 'AB (not counted)', 'T' => 'not marked yet', 'X' => 'No practice', 'N' => '-', 'F' => ''];
 
         $headings = ['Player No', 'Player', 'Group', 'Days'];
         foreach ($d['columns'] as $c) {
@@ -236,7 +241,8 @@ class AttendanceController extends Controller
 
     /**
      * Builds the grid. Cell codes:
-     *  P = present, E = present on a day that is not theirs (extra), A = absent (expected but not marked),
+     *  P = present, E = present on a day that is not theirs (extra), A = absent (used a session),
+     *  U = absent but not counted (package already used up), T = today, not marked yet,
      *  X = practice cancelled, N = not their training day / not joined yet, F = still to come.
      */
     private function registerData(Request $request): array
@@ -268,6 +274,15 @@ class AttendanceController extends Controller
             ->get(['player_id', 'attendance_date', 'is_extra'])
             ->each(function ($a) use (&$marks) {
                 $marks[$a->player_id][$a->attendance_date->toDateString()] = (bool) $a->is_extra;
+            });
+
+        // [player_id][Y-m-d] = counted, written when the practice day was settled
+        $absent = [];
+        Absence::whereBetween('attendance_date', [$from->toDateString(), $to->toDateString()])
+            ->whereIn('player_id', $players->pluck('id'))
+            ->get(['player_id', 'attendance_date', 'counted'])
+            ->each(function ($a) use (&$absent) {
+                $absent[$a->player_id][$a->attendance_date->toDateString()] = (bool) $a->counted;
             });
 
         // columns: every session of the month + days where someone was marked without a session (extra)
@@ -329,8 +344,10 @@ class AttendanceController extends Controller
                     $cell = 'N';
                 } elseif ($c['key'] > $todayKey) {
                     $cell = 'F';
+                } elseif ($c['key'] === $todayKey) {
+                    $cell = 'T';
                 } else {
-                    $cell = 'A';
+                    $cell = ($absent[$p->id][$c['key']] ?? true) ? 'A' : 'U';
                     $expected++;
                 }
                 $cells[] = $cell;

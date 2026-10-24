@@ -7,4 +7,6 @@
 
 @vite([ 'resources/scss/icons.scss', 'resources/scss/style.scss'])
 
+@include('partials.app-ui')
+
 @vite([ 'resources/js/config.js'])

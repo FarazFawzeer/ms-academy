@@ -11,7 +11,14 @@
                     <h5 class="card-title mb-0">{{ \Carbon\Carbon::parse($date)->format('l, d M Y') }}</h5>
                     <p class="card-subtitle mb-0">Switch ON every coach who worked on this day. Salary is added automatically.</p>
                 </div>
-                <a href="{{ route('admin.coaches.salary') }}" class="btn btn-outline-primary">View Salary</a>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('admin.coaches.index') }}" class="btn btn-light ac-btn">
+                    <iconify-icon icon="solar:arrow-left-outline"></iconify-icon> Coaches
+                </a>
+                    <a href="{{ route('admin.coaches.salary') }}" class="btn btn-outline-primary ac-btn">
+                        <iconify-icon icon="solar:wallet-money-outline"></iconify-icon> Salary
+                    </a>
+                </div>
             </div>
 
             <form method="GET" class="row g-2">

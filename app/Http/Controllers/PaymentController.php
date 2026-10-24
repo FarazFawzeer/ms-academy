@@ -58,6 +58,44 @@ class PaymentController extends Controller
         ]);
     }
 
+    /**
+     * Admin only: give a player extra days for free (e.g. came on the first and the last day of the package).
+     * Saved as a LKR 0 payment with method "extra" so it shows in the payment history with the reason.
+     */
+    public function extraDays(Request $request, Player $player)
+    {
+        $v = Validator::make($request->all(), [
+            'days'   => 'required|integer|min:1|max:16',
+            'reason' => 'required|string|max:120',
+        ], [
+            'reason.required' => 'Write a short reason, e.g. "Missed 3 weeks - injury".',
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'errors' => $v->errors()], 422);
+        }
+
+        $days = (int) $request->input('days');
+
+        [, $balance] = Payment::record(
+            $player->id,
+            0,
+            $days,
+            'extra',
+            'Extra days: ' . trim($request->input('reason')),
+            $request->user()?->id
+        );
+
+        $player->sessions_balance = $balance;
+
+        return response()->json([
+            'success' => true,
+            'message' => $days . ' extra day(s) given. ' . $player->name . ' now has ' . $balance . ' session(s).',
+            'balance' => $balance,
+            'badge'   => (string) $player->balanceBadge(),
+        ]);
+    }
+
     public function destroy(Payment $payment)
     {
         DB::transaction(function () use ($payment) {

@@ -118,48 +118,12 @@
             white-space: nowrap;
         }
 
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-edit {
-            color: #f59e0b;
-        }
 
-        .act-del {
-            color: #dc2626;
-        }
 
-        .act-restore {
-            color: #16a34a;
-        }
 
-        .act-lock {
-            color: #94a3b8;
-            cursor: default;
-        }
 
-        .act-lock:hover {
-            transform: none;
-        }
 
         @media (max-width: 575.98px) {
             .sc-row {
@@ -267,27 +231,26 @@
                         @endif
                     </div>
 
-                    <div class="sc-act">
+                    <div class="sc-act ac-actions">
                         @if ($locked)
-                            <span class="act-ico act-lock" title="Players already marked - date is locked">
-                                <iconify-icon icon="solar:lock-keyhole-minimalistic-bold-duotone"></iconify-icon></span>
+                            <span class="text-muted d-inline-flex align-items-center" title="Players already marked - the date is locked">
+                                <iconify-icon icon="solar:lock-keyhole-minimalistic-outline" class="fs-18"></iconify-icon></span>
                         @endif
-                        <button type="button" class="act-ico act-edit btn-edit" title="Move / change time"
+                        <button type="button" class="btn btn-sm btn-soft-primary btn-edit"
                             data-id="{{ $s->id }}" data-date="{{ $key }}"
                             data-start="{{ $s->start_time ? substr($s->start_time, 0, 5) : '' }}"
                             data-end="{{ $s->end_time ? substr($s->end_time, 0, 5) : '' }}" data-note="{{ $s->note }}"
                             data-label="{{ $s->label }}" data-locked="{{ $locked ? 1 : 0 }}">
-                            <iconify-icon icon="solar:pen-bold-duotone"></iconify-icon>
+                            <iconify-icon icon="solar:pen-outline"></iconify-icon><span>{{ $locked ? 'Time' : 'Change' }}</span>
                         </button>
                         @if ($s->is_cancelled)
-                            <button type="button" class="act-ico act-restore btn-restore" title="Put back on"
-                                data-id="{{ $s->id }}">
-                                <iconify-icon icon="solar:restart-circle-bold-duotone"></iconify-icon>
+                            <button type="button" class="btn btn-sm btn-soft-success btn-restore" data-id="{{ $s->id }}">
+                                <iconify-icon icon="solar:restart-outline"></iconify-icon><span>Put back</span>
                             </button>
                         @elseif (!$locked)
-                            <button type="button" class="act-ico act-del btn-cancel" title="Cancel this practice"
-                                data-id="{{ $s->id }}" data-when="{{ $s->session_date->format('l d M') }}">
-                                <iconify-icon icon="solar:close-circle-bold-duotone"></iconify-icon>
+                            <button type="button" class="btn btn-sm btn-soft-danger btn-cancel" data-id="{{ $s->id }}"
+                                data-when="{{ $s->session_date->format('l d M') }}">
+                                <iconify-icon icon="solar:close-circle-outline"></iconify-icon><span>Cancel</span>
                             </button>
                         @endif
                     </div>
@@ -379,10 +342,11 @@
                 msg.innerHTML = '';
                 document.getElementById('slotWrap').classList.toggle('d-none', !isNew);
                 f.slot.disabled = !isNew;
-                f.date.value = v.date || '';
-                f.date.min = isNew || v.locked !== '1' ? today : '';
                 // a locked date is sent unchanged (readonly, not disabled, so it is still posted)
-                f.date.readOnly = v.locked === '1';
+                ACDate.set(f.date, v.date || null, {
+                    min: isNew || v.locked !== '1' ? today : null,
+                    locked: v.locked === '1'
+                });
                 document.getElementById('psLockHint').classList.toggle('d-none', v.locked !== '1');
                 f.start.value = v.start || '';
                 f.end.value = v.end || '';

@@ -14,6 +14,7 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Middleware\EnsureUserType;
+use App\Http\Middleware\SettlePracticeDays;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -38,7 +39,7 @@ Route::get('/auth/lock-screen', fn () => view('auth.lock-screen'))->middleware('
 | Dashboard  (/ and /index both open it; the logo link uses /index)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', SettlePracticeDays::class])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('root');
     Route::get('/index', [DashboardController::class, 'index'])->name('dashboard');
 });
@@ -48,7 +49,7 @@ Route::middleware('auth')->group(function () {
 | Academy - everything below needs a login (the old admin group had none)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', SettlePracticeDays::class])->prefix('admin')->name('admin.')->group(function () {
 
     $manager = EnsureUserType::class . ':Super Admin,Admin';   // Front Desk is blocked
 
@@ -94,6 +95,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::middleware($manager)->group(function () {
 
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->whereNumber('payment')->name('payments.destroy');
+        Route::post('players/{player}/extra-days', [PaymentController::class, 'extraDays'])->whereNumber('player')->name('players.extra-days');
+        Route::delete('players/{player}', [PlayerController::class, 'destroy'])->whereNumber('player')->name('players.destroy');
 
         // Practice schedule (Friday / Sunday by default; move, re-time, cancel, add extra)
         Route::get('schedule', [ScheduleController::class, 'index'])->name('schedule.index');

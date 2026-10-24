@@ -9,10 +9,15 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                 <div>
                     <h5 class="card-title mb-0">Salary - {{ \Carbon\Carbon::createFromFormat('Y-m', $month)->format('F Y') }}</h5>
-                    <p class="card-subtitle mb-0">Days worked x daily rate. Press "Mark paid" after you hand over the salary.</p>
+                    <p class="card-subtitle mb-0">Days worked x daily rate. Press "Paid" after you hand over the salary.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ route('admin.coaches.workdays') }}" class="btn btn-outline-primary">Daily Attendance</a>
+                    <a href="{{ route('admin.coaches.index') }}" class="btn btn-light ac-btn">
+                    <iconify-icon icon="solar:arrow-left-outline"></iconify-icon> Coaches
+                </a>
+                    <a href="{{ route('admin.coaches.workdays') }}" class="btn btn-outline-primary ac-btn">
+                        <iconify-icon icon="solar:calendar-mark-outline"></iconify-icon> Daily Attendance
+                    </a>
                     <a href="{{ route('admin.reports.export', ['type' => 'salary', 'from' => $month . '-01', 'to' => \Carbon\Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString()]) }}"
                         class="btn btn-outline-secondary">Download Excel</a>
                 </div>
@@ -56,40 +61,48 @@
                     <thead class="table-light">
                         <tr>
                             <th>Coach</th>
-                            <th>Days</th>
+                            <th class="d-none d-sm-table-cell">Days</th>
                             <th class="d-none d-md-table-cell">Rate</th>
-                            <th>Total</th>
-                            <th>To pay</th>
-                            <th class="text-end">Action</th>
+                            <th class="d-none d-sm-table-cell">Total</th>
+                            <th class="d-none d-sm-table-cell">To pay</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($rows as $r)
                             <tr>
+                                @php
+                                    $toPay = $r->unpaid > 0
+                                        ? \App\Models\Player::softBadge('#b91c1c', 'LKR ' . number_format($r->unpaid), 96)
+                                        : \App\Models\Player::softBadge($r->days ? '#15803d' : '#6b7280', $r->days ? 'Paid' : '-', 96);
+                                @endphp
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ $r->photo_path ? asset($r->photo_path) : asset('images/users/avatar-6.jpg') }}"
-                                            class="avatar-sm rounded-circle" style="object-fit:cover" alt="">
-                                        <h6 class="mb-0">{{ $r->name }}</h6>
-                                    </div>
+                                    <span class="ac-person">
+                                        <img src="{{ $r->photo_path ? asset($r->photo_path) : asset('images/users/avatar-6.jpg') }}" alt="">
+                                        <span>
+                                            <span class="nm d-block">{{ $r->name }}</span>
+                                            {{-- phones: days, total and amount due under the name --}}
+                                            <span class="sub d-block d-sm-none">{{ $r->days }} day(s) &middot; LKR {{ number_format($r->total) }}</span>
+                                            <span class="d-block d-sm-none mt-1">{{ $toPay }}</span>
+                                        </span>
+                                    </span>
                                 </td>
-                                <td>{{ $r->days }}</td>
+                                <td class="d-none d-sm-table-cell">{{ $r->days }}</td>
                                 <td class="d-none d-md-table-cell">{{ number_format($r->daily_rate) }}</td>
-                                <td>{{ number_format($r->total) }}</td>
+                                <td class="d-none d-sm-table-cell">{{ number_format($r->total) }}</td>
+                                <td class="d-none d-sm-table-cell">{{ $toPay }}</td>
                                 <td>
-                                    @if ($r->unpaid > 0)
-                                        <span class="badge bg-danger">{{ number_format($r->unpaid) }}</span>
-                                    @else
-                                        <span class="badge bg-success">{{ $r->days ? 'Paid' : '-' }}</span>
-                                    @endif
-                                </td>
-                                <td class="text-end text-nowrap">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-days"
-                                        data-id="{{ $r->id }}" data-name="{{ $r->name }}"
-                                        {{ $r->days ? '' : 'disabled' }}>View days</button>
-                                    <button type="button" class="btn btn-sm btn-success btn-pay" data-id="{{ $r->id }}"
-                                        data-name="{{ $r->name }}" data-amount="{{ number_format($r->unpaid) }}"
-                                        {{ $r->unpaid > 0 ? '' : 'disabled' }}>Mark paid</button>
+                                    <div class="ac-actions">
+                                        <button type="button" class="btn btn-sm btn-soft-secondary btn-days" title="View the days worked"
+                                            data-id="{{ $r->id }}" data-name="{{ $r->name }}" {{ $r->days ? '' : 'disabled' }}>
+                                            <iconify-icon icon="solar:calendar-outline"></iconify-icon><span class="ac-hide-xs">Days</span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-success btn-pay" data-id="{{ $r->id }}"
+                                            data-name="{{ $r->name }}" data-amount="{{ number_format($r->unpaid) }}"
+                                            {{ $r->unpaid > 0 ? '' : 'disabled' }}>
+                                            <iconify-icon icon="solar:check-circle-outline"></iconify-icon><span>Paid</span>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

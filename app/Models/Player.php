@@ -29,6 +29,11 @@ class Player extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    public function absences(): HasMany
+    {
+        return $this->hasMany(Absence::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
@@ -81,23 +86,41 @@ class Player extends Model
         };
     }
 
-    /* ---------- fee / session rules ---------- */
+    /* ---------- fee plan / session rules ---------- */
 
-    public static function perPackage(): int
+    /** Plan for a training-days value: ['label' => 'Friday only', 'fee' => 2500, 'sessions' => 4]. */
+    public static function planFor(?string $days): array
     {
-        return (int) config('academy.sessions_per_package', 8);
+        $plans = (array) config('academy.plans', []);
+
+        return $plans[$days] ?? $plans[implode(',', array_keys(PracticeSession::slots()))] ?? ['label' => '-', 'fee' => 0, 'sessions' => 8];
     }
 
-    /** Sessions left at which the renewal reminder is queued (8 - 6 = 2). */
-    public static function remindThreshold(): int
+    public function plan(): array
     {
-        return max(0, self::perPackage() - (int) config('academy.remind_at_session', 6));
+        return self::planFor($this->training_days);
     }
 
-    /** "Session N of 8" number for a balance AFTER an attendance was counted. */
-    public static function sessionNumber(int $balance): int
+    public function planSessions(): int
     {
-        $n = self::perPackage();
+        return (int) $this->plan()['sessions'];
+    }
+
+    public function planFee(): float
+    {
+        return (float) $this->plan()['fee'];
+    }
+
+    /** Sessions left at which the renewal reminder is queued: one week of practice (2 for Fri+Sun, 1 for one day). */
+    public function remindThreshold(): int
+    {
+        return max(1, count($this->days));
+    }
+
+    /** "Session N of 8" number for a balance AFTER a session was used. */
+    public function sessionNumber(int $balance): int
+    {
+        $n = $this->planSessions();
         if ($balance < 0) {
             return $n;
         }
@@ -202,7 +225,7 @@ class Player extends Model
             [$c, $txt] = ['#b91c1c', 'Due: ' . abs($b) . ' unpaid'];
         } elseif ($b === 0) {
             [$c, $txt] = ['#b45309', 'Renew now'];
-        } elseif ($b <= self::remindThreshold()) {
+        } elseif ($b <= $this->remindThreshold()) {
             [$c, $txt] = ['#b45309', $b . ' left'];
         } else {
             [$c, $txt] = ['#15803d', $b . ' left'];
@@ -223,14 +246,14 @@ class Player extends Model
 
     public function reminderMessage(): string
     {
-        $used = self::sessionNumber((int) $this->sessions_balance);
+        $used = $this->sessionNumber((int) $this->sessions_balance);
 
         return strtr(config('academy.whatsapp_message'), [
             '{guardian}' => $this->guardian_name,
             '{player}'   => $this->name,
             '{used}'     => $used,
-            '{total}'    => self::perPackage(),
-            '{fee}'      => number_format((float) config('academy.fee')),
+            '{total}'    => $this->planSessions(),
+            '{fee}'      => number_format($this->planFee()),
             '{academy}'  => config('academy.name'),
         ]);
     }

@@ -2,43 +2,10 @@
     <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Attendance', 'subtitle' => 'Scan'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <?php echo $__env->make('partials.js-helpers', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
+    <?php $isAdmin = in_array(auth()->user()->type, ['Super Admin', 'Admin']); ?>
+
     <style>
-        #reader video {
-            width: 100% !important;
-            border-radius: .5rem;
-        }
-
-        #reader {
-            border: 0 !important;
-        }
-
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
-
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
-
-        .act-undo {
-            color: #dc2626;
-        }
-
-        /* Today's practice banner */
+        /* ---------- today banner ---------- */
         .sc-today {
             display: flex;
             align-items: center;
@@ -49,7 +16,7 @@
             font-size: 14px;
         }
 
-        .sc-today iconify-icon {
+        .sc-today > iconify-icon {
             font-size: 26px;
             flex-shrink: 0;
         }
@@ -71,6 +38,164 @@
             color: #64748b;
         }
 
+        .sc-count {
+            margin-left: auto;
+            text-align: right;
+            line-height: 1.1;
+        }
+
+        .sc-count b {
+            font-size: 22px;
+            display: block;
+        }
+
+        .sc-count small {
+            font-size: 11px;
+        }
+
+        /* ---------- camera with result flash on top ---------- */
+        .sc-cam {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #0f172a;
+            aspect-ratio: 1 / 1;
+            max-height: 62vh;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        #reader {
+            border: 0 !important;
+            width: 100%;
+            height: 100%;
+        }
+
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+
+        #reader img[alt="Info icon"],
+        #reader__dashboard_section_csr,
+        #reader__header_message {
+            display: none !important;
+        }
+
+        .sc-idle {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #94a3b8;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .sc-idle iconify-icon {
+            font-size: 56px;
+            color: #475569;
+        }
+
+        .sc-flash {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .3);
+            transform: translateY(130%);
+            transition: transform .18s ease;
+            z-index: 5;
+        }
+
+        .sc-flash.show {
+            transform: translateY(0);
+        }
+
+        .sc-flash.ok {
+            background: #15803d;
+        }
+
+        .sc-flash.warn {
+            background: #b45309;
+        }
+
+        .sc-flash.bad {
+            background: #b91c1c;
+        }
+
+        .sc-flash img {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, .7);
+            flex-shrink: 0;
+        }
+
+        .sc-flash .t {
+            font-weight: 700;
+            font-size: 17px;
+            line-height: 1.2;
+        }
+
+        .sc-flash .s {
+            font-size: 13px;
+            opacity: .92;
+        }
+
+        .sc-frame {
+            position: absolute;
+            inset: 18%;
+            border: 3px solid rgba(255, 255, 255, .55);
+            border-radius: 18px;
+            pointer-events: none;
+            z-index: 4;
+            display: none;
+        }
+
+        .sc-cam.running .sc-frame {
+            display: block;
+        }
+
+        .sc-cam.running .sc-idle {
+            display: none;
+        }
+
+        /* ---------- result card (stays until the next scan) ---------- */
+        .sc-result {
+            margin-top: 12px;
+        }
+
+        .sc-result .alert {
+            margin: 0;
+        }
+
+        /* ---------- search ---------- */
+        .sc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+        }
+
+        .sc-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
         .not-today {
             font-size: 11px;
             font-weight: 600;
@@ -79,114 +204,122 @@
             background: #b453091a;
             color: #b45309;
             margin-left: 4px;
+            white-space: nowrap;
         }
 
-        .act-present {
-            color: #16a34a;
-            font-size: 28px;
-            width: 40px;
-            height: 40px;
+        .sc-list .ac-person img {
+            width: 34px;
+            height: 34px;
         }
     </style>
 
     <div class="row g-3">
         <div class="col-lg-5">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Mark Attendance</h5>
-                    <span class="badge bg-primary fs-12" id="todayBadge"><?php echo e($today->count()); ?> today</span>
-                </div>
-
                 <div class="card-body">
                     <?php if($session): ?>
                         <div class="sc-today on">
                             <iconify-icon icon="solar:calendar-mark-bold-duotone"></iconify-icon>
-                            <div><strong>Today: <?php echo e($session->label); ?></strong>
+                            <div><strong><?php echo e($session->label); ?></strong>
                                 <small><?php echo e($session->time_text); ?> &middot; <?php echo e($expected); ?> players train today</small></div>
+                            <div class="sc-count"><b id="countBig"><?php echo e($today->count()); ?></b><small>marked</small></div>
                         </div>
                     <?php else: ?>
                         <div class="sc-today off">
                             <iconify-icon icon="solar:calendar-minimalistic-bold-duotone"></iconify-icon>
                             <div><strong>No practice today</strong>
-                                <small>Attendance can only be marked on practice days.
-                                    <?php if(in_array(auth()->user()->type, ['Super Admin', 'Admin'])): ?>
-                                        As an Admin you can still mark an extra session.
-                                    <?php endif; ?>
-                                </small></div>
+                                <small><?php echo e($isAdmin ? 'You can still mark an extra session.' : 'Attendance is marked on practice days only.'); ?></small>
+                            </div>
+                            <div class="sc-count"><b id="countBig"><?php echo e($today->count()); ?></b><small>marked</small></div>
                         </div>
                     <?php endif; ?>
 
                     <ul class="nav nav-pills nav-justified mb-3" role="tablist">
-                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tabScan"
-                                role="tab">Scan QR</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabSearch" role="tab">Search
-                                name</a></li>
+                        <li class="nav-item"><a class="nav-link active ac-btn" data-bs-toggle="pill" href="#tabScan" role="tab">
+                                <iconify-icon icon="solar:qr-code-outline"></iconify-icon> Scan cards</a></li>
+                        <li class="nav-item"><a class="nav-link ac-btn" data-bs-toggle="pill" href="#tabSearch" role="tab" id="searchTab">
+                                <iconify-icon icon="solar:magnifer-outline"></iconify-icon> Search name</a></li>
                     </ul>
 
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="tabScan" role="tabpanel">
-                            <div id="reader" class="bg-dark rounded" style="min-height:240px"></div>
-                            <div class="d-grid mt-3">
-                                <button type="button" id="btnCamera" class="btn btn-primary btn-lg">Start Camera</button>
+                            <div class="sc-cam" id="cam">
+                                <div id="reader"></div>
+                                <div class="sc-frame"></div>
+                                <div class="sc-idle">
+                                    <iconify-icon icon="solar:camera-outline"></iconify-icon>
+                                    <div>Press <strong class="text-white">Start scanning</strong>, then hold each card in
+                                        front of the camera. Players are marked one after another, no need to tap.</div>
+                                </div>
+                                <div class="sc-flash" id="flash" role="status" aria-live="polite"></div>
                             </div>
-                            <p class="text-muted small mt-2 mb-0" id="camHint">Hold the player's card in front of the camera.
-                                The camera needs a secure (https) connection.</p>
+                            <div class="d-grid mt-3">
+                                <button type="button" id="btnCamera" class="btn btn-primary btn-lg ac-btn">
+                                    <iconify-icon icon="solar:play-circle-outline"></iconify-icon> Start scanning
+                                </button>
+                            </div>
+                            <p class="text-muted small mt-2 mb-0" id="camHint">Works on the phone camera (needs https). Keep the
+                                card about 15-20 cm away.</p>
                         </div>
 
                         <div class="tab-pane fade" id="tabSearch" role="tabpanel">
                             <input type="search" id="searchBox" class="form-control form-control-lg"
-                                placeholder="Type name, ID (MS-0012) or phone" autocomplete="off">
+                                placeholder="Name, ID (MS-0012) or phone" autocomplete="off" enterkeyhint="done">
+                            <div class="form-text">Press Enter to mark when only one player matches.</div>
                             <div id="searchResults" class="list-group mt-2"></div>
                         </div>
                     </div>
 
-                    <div id="result" class="mt-3"></div>
+                    <div id="result" class="sc-result"></div>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-7">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Today - <?php echo e(today()->format('l, d M Y')); ?></h5>
-                    <p class="card-subtitle mb-0">Newest first. Use Undo if someone was marked by mistake.</p>
+                <div class="card-header d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <h5 class="card-title mb-0">Today - <?php echo e(today()->format('l, d M Y')); ?></h5>
+                        <p class="card-subtitle mb-0">Newest first. Undo if someone was marked by mistake.</p>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary fs-12" id="todayBadge"><?php echo e($today->count()); ?> marked</span>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-centered mb-0">
+                    <div class="table-responsive sc-list">
+                        <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Player</th>
                                     <th class="d-none d-sm-table-cell">Group</th>
                                     <th>Time</th>
-                                    <th class="text-end">Action</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="todayBody">
                                 <?php $__currentLoopData = $today; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $a): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <tr id="att-<?php echo e($a->id); ?>">
                                         <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <img src="<?php echo e($a->photo_path ? asset($a->photo_path) : asset('images/users/avatar-6.jpg')); ?>"
-                                                    class="avatar-sm rounded-circle" style="object-fit:cover" alt="">
-                                                <div>
-                                                    <h6 class="mb-0"><?php echo e($a->name); ?></h6>
-                                                    <small class="text-muted"><?php echo e($a->player_no); ?></small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="d-none d-sm-table-cell"><?php echo e($a->age_group ?? '-'); ?>
+                                            <span class="ac-person">
+                                                <img src="<?php echo e($a->photo_path ? asset($a->photo_path) : asset('images/users/avatar-6.jpg')); ?>" alt="">
+                                                <span>
+                                                    <span class="nm d-block"><?php echo e($a->name); ?></span>
+                                                    <span class="sub d-block"><?php echo e($a->player_no); ?>
 
-                                            <?php if($a->is_extra): ?>
-                                                <span class="not-today">Extra</span>
-                                            <?php endif; ?>
+                                                        <?php if($a->is_extra): ?>
+                                                            <span class="not-today">Extra</span>
+                                                        <?php endif; ?>
+                                                    </span>
+                                                </span>
+                                            </span>
                                         </td>
-                                        <td><?php echo e(\Carbon\Carbon::parse($a->created_at)->format('h:i A')); ?></td>
-                                        <td class="text-end">
-                                            <button type="button" class="act-ico act-undo undo" data-id="<?php echo e($a->id); ?>"
-                                                title="Undo (marked by mistake)">
-                                                <iconify-icon icon="solar:undo-left-round-bold-duotone"></iconify-icon>
-                                            </button>
+                                        <td class="d-none d-sm-table-cell"><?php echo e($a->age_group ?? '-'); ?></td>
+                                        <td class="text-nowrap"><?php echo e(\Carbon\Carbon::parse($a->created_at)->format('h:i A')); ?></td>
+                                        <td>
+                                            <div class="ac-actions">
+                                                <button type="button" class="btn btn-sm btn-soft-danger undo" data-id="<?php echo e($a->id); ?>">
+                                                    <iconify-icon icon="solar:undo-left-round-outline"></iconify-icon><span>Undo</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -209,89 +342,130 @@
             var markUrl = "<?php echo e(route('admin.attendance.mark')); ?>";
             var searchUrl = "<?php echo e(route('admin.attendance.search')); ?>";
             var undoTpl = "<?php echo e(route('admin.attendance.destroy', ['attendance' => '__ID__'])); ?>";
+            var avatar = "<?php echo e(asset('images/users/avatar-6.jpg')); ?>";
 
-            var resultBox = document.getElementById('result');
-            var todayBody = document.getElementById('todayBody');
-            var emptyRow = document.getElementById('emptyRow');
-            var badge = document.getElementById('todayBadge');
+            var $ = function(id) {
+                return document.getElementById(id);
+            };
+            var resultBox = $('result'),
+                todayBody = $('todayBody'),
+                emptyRow = $('emptyRow');
             var count = <?php echo e($today->count()); ?>;
 
             function setCount(n) {
                 count = Math.max(0, n);
-                badge.textContent = count + ' today';
+                $('todayBadge').textContent = count + ' marked';
+                $('countBig').textContent = count;
                 emptyRow.classList.toggle('d-none', count > 0);
             }
 
             /* ---------- feedback: beep + vibrate ---------- */
             var audioCtx;
 
-            function beep(ok) {
+            function beep(kind) {
                 try {
                     audioCtx = audioCtx || new(window.AudioContext || window.webkitAudioContext)();
                     var o = audioCtx.createOscillator(),
                         g = audioCtx.createGain();
                     o.connect(g);
                     g.connect(audioCtx.destination);
-                    o.frequency.value = ok ? 880 : 300;
-                    g.gain.value = 0.08;
+                    o.frequency.value = kind === 'ok' ? 1046 : (kind === 'warn' ? 520 : 260);
+                    g.gain.value = 0.09;
                     o.start();
-                    o.stop(audioCtx.currentTime + (ok ? 0.12 : 0.3));
+                    o.stop(audioCtx.currentTime + (kind === 'ok' ? 0.12 : 0.32));
                 } catch (e) {}
-                if (navigator.vibrate) navigator.vibrate(ok ? 80 : [120, 60, 120]);
+                if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 70 : [120, 60, 120]);
             }
 
-            /* ---------- result card ---------- */
-            function showResult(d) {
+            /* ---------- what a server answer means ---------- */
+            function describe(d) {
                 var p = d.player || {};
-                var cls = 'success',
-                    title = '',
-                    sub = '',
-                    extra = '';
+                var r = {
+                    kind: 'bad',
+                    title: AC.esc(d.message || 'Not recognised'),
+                    sub: '',
+                    extra: ''
+                };
 
                 if (d.status === 'marked') {
-                    if (d.payment_due) {
-                        cls = 'danger';
-                        title = 'Marked - PAYMENT DUE';
-                        sub = 'Please collect the fee (LKR <?php echo e(number_format(config('academy.fee'))); ?>).';
-                    } else {
-                        title = d.extra ? 'Marked (extra session)' : 'Attendance marked';
-                        sub = 'Session ' + d.session + ' of ' + d.total + ' &middot; ' + d.balance + ' left';
-                    }
-                    if (d.reminder) extra = '<div class="mt-1"><span class="badge bg-warning text-dark">Renewal reminder queued</span></div>';
+                    r.kind = d.payment_due ? 'warn' : 'ok';
+                    r.title = d.extra ? 'Marked (extra day)' : 'Marked present';
+                    r.sub = d.payment_due ? 'PAYMENT DUE - collect the fee' :
+                        'Session ' + d.session + ' of ' + d.total + ' &middot; ' + d.balance + ' left';
+                    if (d.reminder) r.extra = '<span class="badge bg-warning text-dark mt-1">Renewal reminder queued</span>';
                 } else if (d.status === 'duplicate') {
-                    cls = 'warning';
-                    title = 'Already marked today';
+                    r.kind = 'warn';
+                    r.title = 'Already marked today';
                 } else if (d.status === 'inactive') {
-                    cls = 'warning';
-                    title = 'Player is inactive';
+                    r.kind = 'warn';
+                    r.title = 'Player is inactive';
                 } else if (d.status === 'wrong_day' || d.status === 'no_practice') {
-                    cls = 'warning';
-                    title = d.status === 'wrong_day' ? 'Not a training day for this player' : 'No practice today';
-                    sub = AC.esc(d.message || '');
-                    if (d.can_override) {
-                        extra = '<button type="button" class="btn btn-sm btn-warning mt-2" id="btnForce">Mark anyway (extra session)</button>';
-                    } else {
-                        extra = '<div class="small mt-1">Ask an Admin if this is a make-up class.</div>';
-                    }
-                } else {
-                    cls = 'danger';
-                    title = AC.esc(d.message || 'Not recognised');
+                    r.kind = 'warn';
+                    r.title = d.status === 'wrong_day' ? 'Not this player\'s training day' : 'No practice today';
+                    r.sub = AC.esc(d.message || '');
+                }
+                r.name = p.name || '';
+                r.line = [p.no, p.group, p.days].filter(Boolean).map(AC.esc).join(' &middot; ');
+                return r;
+            }
+
+            /* big flash on top of the camera (hides by itself) */
+            var flashTimer;
+
+            function flash(d) {
+                var r = describe(d),
+                    p = d.player || {},
+                    el = $('flash');
+                el.className = 'sc-flash ' + r.kind;
+                el.innerHTML = (p.name ? '<img src="' + AC.esc(p.photo || avatar) + '" alt="">' : '') +
+                    '<div><div class="t">' + (p.name ? AC.esc(p.name) : r.title) + '</div><div class="s">' +
+                    (p.name ? r.title + (r.sub ? ' &middot; ' + r.sub : '') : r.sub) + '</div></div>';
+                void el.offsetWidth;
+                el.classList.add('show');
+                clearTimeout(flashTimer);
+                flashTimer = setTimeout(function() {
+                    el.classList.remove('show');
+                }, r.kind === 'ok' ? 1800 : 3200);
+            }
+
+            /* result card under the camera / search (stays, with action buttons) */
+            function showResult(d) {
+                var r = describe(d),
+                    p = d.player || {};
+                var cls = {
+                    ok: 'success',
+                    warn: 'warning',
+                    bad: 'danger'
+                } [r.kind];
+                var btns = '';
+
+                if (d.status === 'marked' && (d.payment_due || d.reminder)) {
+                    btns += '<button type="button" class="btn btn-sm btn-success ac-btn" id="btnPay">' +
+                        '<iconify-icon icon="solar:wallet-money-outline"></iconify-icon> Receive payment</button>';
+                }
+                if ((d.status === 'wrong_day' || d.status === 'no_practice') && d.can_override) {
+                    btns += '<button type="button" class="btn btn-sm btn-warning ac-btn" id="btnForce">' +
+                        '<iconify-icon icon="solar:add-circle-outline"></iconify-icon> Mark anyway (extra day)</button>';
+                } else if (d.status === 'wrong_day' || d.status === 'no_practice') {
+                    btns += '<div class="small mt-1">Ask an Admin if this is a make-up class.</div>';
                 }
 
-                var payBtn = (d.status === 'marked' && (d.payment_due || d.reminder)) ?
-                    '<button type="button" class="btn btn-sm btn-success mt-2" onclick="openPayment(' + p.id + ', ' +
-                    JSON.stringify(p.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') +
-                    ')">Receive payment</button>' : '';
-
-                var who = p.name ?
-                    '<img src="' + AC.esc(p.photo) + '" class="rounded-circle flex-shrink-0" style="width:64px;height:64px;object-fit:cover" alt="">' :
-                    '';
-
                 resultBox.innerHTML =
-                    '<div class="alert alert-' + cls + ' d-flex align-items-center gap-3 mb-0">' + who +
-                    '<div><h5 class="mb-1">' + title + '</h5>' +
-                    (p.name ? '<div><strong>' + AC.esc(p.name) + '</strong> &middot; ' + AC.esc(p.no || '') + (p.group ? ' &middot; ' + AC.esc(p.group) : '') + (p.days ? ' &middot; ' + AC.esc(p.days) : '') + '</div>' : '') +
-                    (sub ? '<div>' + sub + '</div>' : '') + extra + payBtn + '</div></div>';
+                    '<div class="alert alert-' + cls + ' d-flex align-items-center gap-3">' +
+                    (p.name ? '<img src="' + AC.esc(p.photo || avatar) + '" class="rounded-circle flex-shrink-0" style="width:56px;height:56px;object-fit:cover" alt="">' : '') +
+                    '<div class="flex-grow-1"><div class="fw-bold">' + r.title + '</div>' +
+                    (p.name ? '<div><strong>' + AC.esc(p.name) + '</strong> &middot; ' + r.line + '</div>' : '') +
+                    (r.sub ? '<div>' + r.sub + '</div>' : '') + r.extra +
+                    (btns ? '<div class="d-flex flex-wrap gap-2 mt-2">' + btns + '</div>' : '') + '</div></div>';
+
+                var pay = $('btnPay');
+                if (pay) pay.addEventListener('click', function() {
+                    openPayment(p.id, p.name, {
+                        label: p.days,
+                        fee: p.fee,
+                        sessions: p.plan
+                    });
+                });
             }
 
             function addRow(d) {
@@ -299,43 +473,45 @@
                 var tr = document.createElement('tr');
                 tr.id = 'att-' + d.attendance_id;
                 tr.innerHTML =
-                    '<td><div class="d-flex align-items-center gap-2"><img src="' + AC.esc(p.photo) +
-                    '" class="avatar-sm rounded-circle" style="object-fit:cover" alt=""><div><h6 class="mb-0">' + AC.esc(p.name) +
-                    '</h6><small class="text-muted">' + AC.esc(p.no || '') + '</small></div></div></td>' +
-                    '<td class="d-none d-sm-table-cell">' + AC.esc(p.group || '-') + (d.extra ? ' <span class="not-today">Extra</span>' : '') + '</td>' +
-                    '<td>' + AC.esc(d.time) + '</td>' +
-                    '<td class="text-end"><button type="button" class="act-ico act-undo undo" data-id="' + d.attendance_id + '" title="Undo (marked by mistake)"><iconify-icon icon="solar:undo-left-round-bold-duotone"></iconify-icon></button></td>';
+                    '<td><span class="ac-person"><img src="' + AC.esc(p.photo || avatar) + '" alt=""><span><span class="nm d-block">' +
+                    AC.esc(p.name) + '</span><span class="sub d-block">' + AC.esc(p.no || '') +
+                    (d.extra ? ' <span class="not-today">Extra</span>' : '') + '</span></span></span></td>' +
+                    '<td class="d-none d-sm-table-cell">' + AC.esc(p.group || '-') + '</td>' +
+                    '<td class="text-nowrap">' + AC.esc(d.time) + '</td>' +
+                    '<td><div class="ac-actions"><button type="button" class="btn btn-sm btn-soft-danger undo" data-id="' + d.attendance_id +
+                    '"><iconify-icon icon="solar:undo-left-round-outline"></iconify-icon><span>Undo</span></button></div></td>';
                 todayBody.insertBefore(tr, todayBody.firstChild);
             }
 
-            // last mark request, so an Admin can repeat it with force=1 ("Mark anyway")
+            function handle(d, fromCamera) {
+                var kind = describe(d).kind;
+                beep(kind);
+                if (d.status === 'marked') {
+                    addRow(d);
+                    setCount(count + 1);
+                }
+                if (fromCamera) flash(d);
+                showResult(d);
+            }
+
+            // last request, so an Admin can repeat it with force=1 ("Mark anyway")
             var lastBody = null;
 
-            async function mark(body) {
+            async function mark(body, fromCamera) {
                 lastBody = body;
                 handle(await AC.call(markUrl, {
                     body: body
-                }));
+                }), fromCamera);
             }
 
             resultBox.addEventListener('click', async function(e) {
-                if (!e.target.closest('#btnForce') || !lastBody) return;
-                e.target.disabled = true;
+                var b = e.target.closest('#btnForce');
+                if (!b || !lastBody) return;
+                b.disabled = true;
                 await mark(Object.assign({}, lastBody, {
                     force: 1
-                }));
+                }), false);
             });
-
-            function handle(d) {
-                if (d.status === 'marked') {
-                    beep(true);
-                    addRow(d);
-                    setCount(count + 1);
-                } else {
-                    beep(false);
-                }
-                showResult(d);
-            }
 
             /* ---------- undo ---------- */
             todayBody.addEventListener('click', function(e) {
@@ -346,40 +522,54 @@
                     method: 'DELETE',
                     confirm: {
                         title: 'Undo this attendance?',
-                        text: 'The session will be given back to the player.',
+                        text: 'The session is given back to the player.',
                         button: 'Yes, undo'
                     },
                     onSuccess: function() {
-                        var row = document.getElementById('att-' + id);
+                        var row = $('att-' + id);
                         if (row) row.remove();
                         setCount(count - 1);
                     }
                 });
             });
 
-            /* ---------- camera scanner ---------- */
+            /* ---------- non-stop camera scanner ---------- */
             var scanner = null,
                 running = false,
-                busy = false,
-                lastToken = '',
-                lastAt = 0;
-            var btn = document.getElementById('btnCamera');
-            var hint = document.getElementById('camHint');
+                inFlight = false,
+                seen = {}, // token -> time last sent (same card held still is ignored for a few seconds)
+                wakeLock = null;
+            var btn = $('btnCamera'),
+                hint = $('camHint'),
+                cam = $('cam');
 
             async function onScan(text) {
                 var token = String(text || '').trim().toUpperCase();
-                if (busy || !token) return;
-                if (token === lastToken && Date.now() - lastAt < 5000) return; // same card held still
-                busy = true;
-                lastToken = token;
-                lastAt = Date.now();
+                var now = Date.now();
+                if (!token || inFlight) return;
+                if (seen[token] && now - seen[token] < 6000) return;
+                seen[token] = now;
+                inFlight = true;
+                try {
+                    await mark({
+                        token: token
+                    }, true);
+                } finally {
+                    inFlight = false;
+                }
+            }
 
-                await mark({
-                    token: token
-                });
-                setTimeout(function() {
-                    busy = false;
-                }, 1200);
+            async function keepAwake() {
+                try {
+                    if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+                } catch (e) {}
+            }
+
+            function setBtn(on) {
+                btn.innerHTML = on ?
+                    '<iconify-icon icon="solar:stop-circle-outline"></iconify-icon> Stop scanning' :
+                    '<iconify-icon icon="solar:play-circle-outline"></iconify-icon> Start scanning';
+                btn.className = (on ? 'btn btn-outline-danger' : 'btn btn-primary') + ' btn-lg ac-btn';
             }
 
             async function startCamera() {
@@ -387,27 +577,41 @@
                     hint.innerHTML = '<span class="text-danger">Scanner could not load. Check the internet connection and refresh.</span>';
                     return;
                 }
-                scanner = scanner || new Html5Qrcode('reader');
+                scanner = scanner || new Html5Qrcode('reader', {
+                    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+                    experimentalFeatures: {
+                        useBarCodeDetectorIfSupported: true // much faster on Android Chrome
+                    },
+                    verbose: false
+                });
+                btn.disabled = true;
                 try {
                     await scanner.start({
                         facingMode: 'environment'
                     }, {
-                        fps: 10,
+                        fps: 15,
                         qrbox: function(w, h) {
-                            var s = Math.floor(Math.min(w, h) * 0.7);
+                            var s = Math.floor(Math.min(w, h) * 0.75);
                             return {
                                 width: s,
                                 height: s
                             };
-                        }
+                        },
+                        aspectRatio: 1
                     }, onScan, function() {});
                     running = true;
-                    btn.textContent = 'Stop Camera';
-                    btn.className = 'btn btn-outline-danger btn-lg';
-                    hint.textContent = 'Scanning... hold the card about 15-20 cm from the camera.';
+                    cam.classList.add('running');
+                    setBtn(true);
+                    hint.textContent = 'Scanning... show the cards one after another.';
+                    keepAwake();
+                    try {
+                        localStorage.setItem('ac-scan-on', '1');
+                    } catch (e) {}
                 } catch (err) {
                     hint.innerHTML = '<span class="text-danger">Could not open the camera. Allow camera permission and make sure the site opens with https. (' +
                         AC.esc(String(err)) + ')</span>';
+                } finally {
+                    btn.disabled = false;
                 }
             }
 
@@ -418,22 +622,57 @@
                     } catch (e) {}
                 }
                 running = false;
-                btn.textContent = 'Start Camera';
-                btn.className = 'btn btn-primary btn-lg';
+                cam.classList.remove('running');
+                setBtn(false);
+                hint.textContent = 'Scanner stopped.';
+                if (wakeLock) wakeLock.release().catch(function() {});
+                try {
+                    localStorage.removeItem('ac-scan-on');
+                } catch (e) {}
             }
 
             btn.addEventListener('click', function() {
                 running ? stopCamera() : startCamera();
             });
 
+            // screen lock released when the tab was hidden: ask again when it comes back
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible' && running) keepAwake();
+            });
+
+            // was scanning before a refresh: start again straight away
+            try {
+                if (localStorage.getItem('ac-scan-on') === '1') startCamera();
+            } catch (e) {}
+
             /* ---------- manual search ---------- */
-            var box = document.getElementById('searchBox');
-            var list = document.getElementById('searchResults');
+            var box = $('searchBox');
+            var list = $('searchResults');
+            var lastRows = [];
+
+            function drawRows(rows) {
+                lastRows = rows;
+                if (!rows.length) {
+                    list.innerHTML = '<div class="list-group-item text-muted">No player found.</div>';
+                    return;
+                }
+                list.innerHTML = rows.map(function(p) {
+                    return '<div class="list-group-item sc-item">' +
+                        '<img src="' + AC.esc(p.photo) + '" alt="">' +
+                        '<div class="flex-grow-1 min-w-0"><div class="fw-semibold">' + AC.esc(p.name) + '</div><small class="text-muted">' +
+                        AC.esc(p.no || '') + (p.group ? ' &middot; ' + AC.esc(p.group) : '') +
+                        (p.not_today ? '<span class="not-today">Not today</span>' : '') + '</small>' +
+                        '<div class="mt-1">' + p.badge + '</div></div>' +
+                        '<button type="button" class="btn btn-success ac-btn mark-btn" data-id="' + p.id + '">' +
+                        '<iconify-icon icon="solar:check-circle-outline"></iconify-icon><span>Present</span></button></div>';
+                }).join('');
+            }
 
             box.addEventListener('input', AC.debounce(async function() {
                 var q = box.value.trim();
                 if (q.length < 2) {
                     list.innerHTML = '';
+                    lastRows = [];
                     return;
                 }
                 var rows = await AC.call(searchUrl + '?q=' + encodeURIComponent(q), {
@@ -443,30 +682,35 @@
                     list.innerHTML = '<div class="list-group-item text-danger">' + AC.errors(rows) + '</div>';
                     return;
                 }
-                if (!rows.length) {
-                    list.innerHTML = '<div class="list-group-item text-muted">No player found.</div>';
-                    return;
-                }
-                list.innerHTML = rows.map(function(p) {
-                    return '<div class="list-group-item d-flex align-items-center gap-2">' +
-                        '<img src="' + AC.esc(p.photo) + '" class="avatar-sm rounded-circle" style="object-fit:cover" alt="">' +
-                        '<div class="flex-grow-1"><h6 class="mb-0">' + AC.esc(p.name) + '</h6><small class="text-muted">' +
-                        AC.esc(p.no || '') + (p.group ? ' &middot; ' + AC.esc(p.group) : '') + ' &middot; ' + AC.esc(p.days || '') +
-                        (p.not_today ? '<span class="not-today">Not today</span>' : '') + '</small></div>' +
-                        '<span>' + p.badge + '</span>' +
-                        '<button type="button" class="act-ico act-present mark-btn" data-id="' + p.id + '" title="Mark present"><iconify-icon icon="solar:check-circle-bold-duotone"></iconify-icon></button></div>';
-                }).join('');
-            }, 250));
+                drawRows(rows);
+            }, 200));
 
-            list.addEventListener('click', async function(e) {
+            async function markFromSearch(id) {
+                await mark({
+                    player_id: id
+                }, false);
+                box.value = '';
+                list.innerHTML = '';
+                lastRows = [];
+                box.focus();
+            }
+
+            // Enter marks the player when exactly one matches
+            box.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && lastRows.length === 1) {
+                    e.preventDefault();
+                    markFromSearch(lastRows[0].id);
+                }
+            });
+
+            list.addEventListener('click', function(e) {
                 var b = e.target.closest('.mark-btn');
                 if (!b) return;
                 b.disabled = true;
-                await mark({
-                    player_id: b.dataset.id
-                });
-                box.value = '';
-                list.innerHTML = '';
+                markFromSearch(b.dataset.id);
+            });
+
+            $('searchTab').addEventListener('shown.bs.tab', function() {
                 box.focus();
             });
 
@@ -477,4 +721,5 @@
         })();
     </script>
 <?php $__env->stopSection(); ?>
+
 <?php echo $__env->make('layouts.vertical', ['subtitle' => 'Scan Attendance'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH F:\Nexas\ms-academy\resources\views/attendance/scan.blade.php ENDPATH**/ ?>

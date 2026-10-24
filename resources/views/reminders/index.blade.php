@@ -5,47 +5,18 @@
     @include('partials.js-helpers')
 
     <style>
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-wa {
-            color: #16a34a;
-        }
 
-        .act-paid {
-            color: #2563eb;
-        }
 
-        .act-dismiss {
-            color: #dc2626;
-        }
     </style>
 
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-0">Renewal Reminders to Send</h5>
             <p class="card-subtitle mb-0">
-                Added automatically when a player completes session {{ config('academy.remind_at_session') }} of
-                {{ config('academy.sessions_per_package') }}. Tap <strong>WhatsApp</strong>, the message is already typed -
+                Added automatically when one week of practice is left (2 sessions for Friday &amp; Sunday players,
+                1 for one-day players). Tap <strong>Send</strong>: WhatsApp opens with the message already typed -
                 just press send.
             </p>
         </div>
@@ -57,47 +28,54 @@
                         <tr>
                             <th>Player</th>
                             <th class="d-none d-md-table-cell">Parent</th>
-                            <th>Sessions</th>
-                            <th class="text-end">Action</th>
+                            <th class="d-none d-sm-table-cell">Sessions</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="pendingBody">
                         @foreach ($pending as $p)
                             <tr id="rem-{{ $p->id }}">
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ $p->photo_url }}" class="avatar-sm rounded-circle"
-                                            style="object-fit:cover" alt="">
-                                        <div>
-                                            <h6 class="mb-0">{{ $p->name }}</h6>
-                                            <small class="text-muted">{{ $p->player_no }} ·
-                                                {{ $p->age_group }}</small>
-                                        </div>
-                                    </div>
+                                    <a href="{{ route('admin.players.show', $p) }}" class="ac-person">
+                                        <img src="{{ $p->photo_url }}" alt="">
+                                        <span>
+                                            <span class="nm d-block">{{ $p->name }}</span>
+                                            <span class="sub d-block">{{ $p->player_no }} &middot; {{ $p->age_group }}</span>
+                                            <span class="d-block d-sm-none mt-1" data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</span>
+                                        </span>
+                                    </a>
                                 </td>
                                 <td class="d-none d-md-table-cell">
                                     {{ $p->guardian_name }}<br><small class="text-muted">{{ $p->guardian_phone }}</small>
                                 </td>
-                                <td data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</td>
-                                <td class="text-end text-nowrap">
-                                    @if ($p->whatsappLink())
-                                        <a href="{{ $p->whatsappLink() }}" target="_blank" rel="noopener"
-                                            class="act-ico act-wa wa-send" data-id="{{ $p->id }}"
-                                            title="Send WhatsApp reminder">
-                                            <iconify-icon icon="logos:whatsapp-icon"></iconify-icon>
-                                        </a>
-                                    @else
-                                        <span class="text-danger small">No valid number</span>
-                                    @endif
-                                    <button type="button" class="act-ico act-paid"
-                                        onclick="openPayment({{ $p->id }}, @js($p->name))"
-                                        title="Parent already paid">
-                                        <iconify-icon icon="solar:wallet-bold-duotone"></iconify-icon>
-                                    </button>
-                                    <button type="button" class="act-ico act-dismiss dismiss"
-                                        data-id="{{ $p->id }}" title="Remove without sending">
-                                        <iconify-icon icon="solar:close-circle-bold-duotone"></iconify-icon>
-                                    </button>
+                                <td class="d-none d-sm-table-cell" data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</td>
+                                <td>
+                                    <div class="ac-actions">
+                                        @if ($p->whatsappLink())
+                                            <a href="{{ $p->whatsappLink() }}" target="_blank" rel="noopener"
+                                                class="btn btn-sm btn-success wa-send" data-id="{{ $p->id }}">
+                                                <iconify-icon icon="ic:baseline-whatsapp"></iconify-icon><span>Send</span>
+                                            </a>
+                                        @else
+                                            <span class="text-danger small">No valid number</span>
+                                        @endif
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-soft-secondary ac-more"
+                                                data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions" title="More actions">
+                                                <iconify-icon icon="solar:menu-dots-bold"></iconify-icon>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><button type="button" class="dropdown-item"
+                                                        onclick="openPayment({{ $p->id }}, @js($p->name), @js($p->plan()))">
+                                                        <iconify-icon icon="solar:wallet-money-outline"></iconify-icon> Already paid - receive payment</button></li>
+                                                <li><a class="dropdown-item" href="{{ route('admin.players.show', $p) }}">
+                                                        <iconify-icon icon="solar:user-id-outline"></iconify-icon> View profile</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><button type="button" class="dropdown-item text-danger dismiss" data-id="{{ $p->id }}">
+                                                        <iconify-icon icon="solar:close-circle-outline"></iconify-icon> Remove without sending</button></li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

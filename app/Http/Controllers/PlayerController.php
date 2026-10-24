@@ -7,6 +7,7 @@ use App\Models\Player;
 use App\Models\PracticeSession;
 use App\Support\AgeGroup;
 use App\Support\ImageUpload;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -49,13 +50,29 @@ class PlayerController extends Controller
 
     public function store(Request $request)
     {
-        $v = Validator::make($request->all(), $this->rules(), $this->messages());
+        $plan = Player::planFor(Player::normaliseDays($request->input('days')));
+
+        // payment on joining: now = paying today, before = paid before the system (part used), none = not paid yet
+        $v = Validator::make($request->all(), $this->rules() + [
+            'payment_mode' => 'nullable|in:now,before,none',
+            'paid_on'      => 'nullable|date|before_or_equal:today',
+            'used'         => 'nullable|integer|min:0|max:' . $plan['sessions'],
+            'used_dates'   => 'nullable|array|max:' . $plan['sessions'],
+            'used_dates.*' => 'nullable|date|before_or_equal:today|distinct',
+        ], $this->messages() + [
+            'used.max'                    => 'This plan has only ' . $plan['sessions'] . ' sessions.',
+            'used_dates.*.distinct'       => 'The same session date is entered twice.',
+            'used_dates.*.before_or_equal' => 'Session dates cannot be in the future.',
+            'paid_on.before_or_equal'     => 'The payment date cannot be in the future.',
+        ]);
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
         }
 
+        $mode = $request->input('payment_mode') ?: ($request->boolean('collect_fee') ? 'now' : 'none');
+
         try {
-            $player = DB::transaction(function () use ($request) {
+            $player = DB::transaction(function () use ($request, $mode, $plan) {
                 $data = $request->only(['name', 'dob', 'phone', 'guardian_name', 'guardian_phone']);
                 $data['training_days'] = Player::normaliseDays($request->input('days'));
                 $data['joined_at']     = $request->input('joined_at') ?: today()->toDateString();
@@ -68,15 +85,10 @@ class PlayerController extends Controller
                 $player = Player::create($data);
                 $player->update(['player_no' => sprintf('%s-%04d', config('academy.player_prefix', 'MS'), $player->id)]);
 
-                if ($request->boolean('collect_fee')) {
-                    Payment::record(
-                        $player->id,
-                        (float) config('academy.fee'),
-                        Player::perPackage(),
-                        'cash',
-                        'First payment on joining',
-                        $request->user()?->id
-                    );
+                if ($mode === 'now') {
+                    Payment::record($player->id, (float) $plan['fee'], (int) $plan['sessions'], 'cash', 'First payment on joining', $request->user()?->id);
+                } elseif ($mode === 'before') {
+                    $this->recordEarlierPackage($player, $plan, $request);
                 }
 
                 return $player;
@@ -94,13 +106,23 @@ class PlayerController extends Controller
 
     public function show(Player $player)
     {
-        $attendance    = $player->attendances()->latest('attendance_date')->limit(30)
-            ->get(['id', 'attendance_date', 'age_group', 'method', 'is_extra', 'created_at']);
+        // last 30 practice days: present and absent together, newest first
+        $present = $player->attendances()->latest('attendance_date')->limit(30)
+            ->get(['id', 'attendance_date', 'age_group', 'method', 'is_extra', 'created_at'])
+            ->map(fn ($a) => (object) ['date' => $a->attendance_date, 'present' => true, 'extra' => $a->is_extra,
+                'counted' => true, 'time' => $a->created_at, 'method' => $a->method, 'group' => $a->age_group]);
+        $missed = $player->absences()->latest('attendance_date')->limit(30)
+            ->get(['attendance_date', 'age_group', 'counted'])
+            ->map(fn ($a) => (object) ['date' => $a->attendance_date, 'present' => false, 'extra' => false,
+                'counted' => $a->counted, 'time' => null, 'method' => null, 'group' => $a->age_group]);
+        $attendance = $present->concat($missed)->sortByDesc(fn ($r) => $r->date->toDateString())->take(30)->values();
+
         $payments      = $player->payments()->latest('paid_at')->limit(10)->get();
         $totalAttended = $player->attendances()->count();
+        $totalMissed   = $player->absences()->count();
         $nextMove      = AgeGroup::nextMove($player->dob);
 
-        return view('players.show', compact('player', 'attendance', 'payments', 'totalAttended', 'nextMove'));
+        return view('players.show', compact('player', 'attendance', 'payments', 'totalAttended', 'totalMissed', 'nextMove'));
     }
 
     public function edit(Player $player)
@@ -137,6 +159,25 @@ class PlayerController extends Controller
             'success'  => true,
             'message'  => 'Player updated.',
             'redirect' => route('admin.players.show', $player),
+        ]);
+    }
+
+    /**
+     * Admin only: remove a player for good (e.g. added twice by mistake).
+     * Their attendance, absences and payments go too (database cascade), so payments drop out of the
+     * revenue reports - the screen asks to deactivate instead when the history should stay.
+     */
+    public function destroy(Player $player)
+    {
+        $name = $player->name;
+
+        DB::transaction(fn () => $player->delete());
+        ImageUpload::delete($player->photo_path);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => $name . ' was deleted.',
+            'redirect' => route('admin.players.index'),
         ]);
     }
 
@@ -210,6 +251,50 @@ class PlayerController extends Controller
     }
 
     /* ---------- helpers ---------- */
+
+    /**
+     * A player who paid before the system started and already used some sessions:
+     * the payment is saved on its real date, used sessions are taken off, and each
+     * session date the admin typed in becomes an attendance record (dates are optional).
+     */
+    private function recordEarlierPackage(Player $player, array $plan, Request $request): void
+    {
+        $paidOn = $request->input('paid_on') ? Carbon::parse($request->input('paid_on')) : today();
+        $used   = (int) $request->input('used', 0);
+        $dates  = collect((array) $request->input('used_dates', []))->filter()->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->unique()->sort()->values()->take($used);
+
+        [$payment] = Payment::record(
+            $player->id,
+            (float) $plan['fee'],
+            (int) $plan['sessions'],
+            'cash',
+            'Paid before the system started' . ($used ? ' (' . $used . ' session(s) already used)' : ''),
+            $request->user()?->id
+        );
+        $payment->update(['paid_at' => $paidOn->copy()->setTime(12, 0)]);
+
+        foreach ($dates as $date) {
+            DB::table('attendances')->insert([
+                'player_id'       => $player->id,
+                'age_group'       => AgeGroup::forDob($player->dob, $date),
+                'attendance_date' => $date,
+                'method'          => 'manual',
+                'is_extra'        => false,
+                'marked_by'       => $request->user()?->id,
+                'created_at'      => $date . ' 12:00:00',
+            ]);
+        }
+
+        if ($used > 0) {
+            DB::table('players')->where('id', $player->id)->decrement('sessions_balance', $used);
+        }
+
+        $balance = (int) DB::table('players')->where('id', $player->id)->value('sessions_balance');
+        if ($balance <= $player->remindThreshold()) {
+            DB::table('players')->where('id', $player->id)->update(['reminder_pending' => true]);
+        }
+    }
 
     private function rules(): array
     {

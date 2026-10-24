@@ -5,31 +5,8 @@
     @include('partials.js-helpers')
 
     <style>
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-del {
-            color: #dc2626;
-        }
 
         .role-badge {
             display: inline-block;
@@ -62,39 +39,41 @@
                         <tr>
                             <th>Name</th>
                             <th class="d-none d-md-table-cell">Email</th>
-                            <th>Role</th>
+                            <th class="d-none d-sm-table-cell">Role</th>
                             <th class="d-none d-lg-table-cell">Updated</th>
-                            <th class="text-end">Action</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($users as $user)
                             <tr id="user-{{ $user->id }}">
+                                @php
+                                    $roleColor = ['Super Admin' => '#7c3aed', 'Admin' => '#2563eb', 'Front Desk' => '#0891b2'][$user->type] ?? '#6b7280';
+                                @endphp
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ $user->image_path ? asset($user->image_path) : asset('/images/users/avatar-6.jpg') }}"
-                                            alt="" class="avatar-sm rounded-circle" style="object-fit:cover">
-                                        <div>
-                                            <h6 class="mb-0">{{ $user->name }}</h6>
-                                            <small class="text-muted d-md-none">{{ $user->email }}</small>
-                                        </div>
-                                    </div>
+                                    <span class="ac-person">
+                                        <img src="{{ $user->image_path ? asset($user->image_path) : asset('/images/users/avatar-6.jpg') }}" alt="">
+                                        <span class="min-w-0">
+                                            <span class="nm d-block">{{ $user->name }}</span>
+                                            <span class="sub d-block d-md-none text-break">{{ $user->email }}</span>
+                                            <span class="d-block d-sm-none mt-1">{{ \App\Models\Player::softBadge($roleColor, $user->type, 96) }}</span>
+                                        </span>
+                                    </span>
                                 </td>
                                 <td class="d-none d-md-table-cell">{{ $user->email }}</td>
-                                <td>
-                                    @php
-                                        $roleColor = ['Super Admin' => '#7c3aed', 'Admin' => '#2563eb', 'Front Desk' => '#0891b2'][$user->type] ?? '#6b7280';
-                                    @endphp
-                                    <span class="role-badge" style="background:{{ $roleColor }}">{{ $user->type }}</span>
-                                </td>
+                                <td class="d-none d-sm-table-cell">{{ \App\Models\Player::softBadge($roleColor, $user->type, 96) }}</td>
                                 <td class="d-none d-lg-table-cell">{{ $user->updated_at->format('d M Y, h:i A') }}</td>
-                                <td class="text-end">
-                                    @if ($user->type !== 'Super Admin' && $user->id !== auth()->id())
-                                        <button type="button" class="act-ico act-del delete-user" title="Delete user"
-                                            data-id="{{ $user->id }}" data-name="{{ $user->name }}">
-                                            <iconify-icon icon="solar:trash-bin-trash-bold-duotone"></iconify-icon>
-                                        </button>
-                                    @endif
+                                <td>
+                                    <div class="ac-actions">
+                                        @if ($user->type !== 'Super Admin' && $user->id !== auth()->id())
+                                            <button type="button" class="btn btn-sm btn-soft-danger delete-user"
+                                                data-id="{{ $user->id }}" data-name="{{ $user->name }}">
+                                                <iconify-icon icon="solar:trash-bin-trash-outline"></iconify-icon><span class="ac-hide-xs">Delete</span>
+                                            </button>
+                                        @else
+                                            <span class="text-muted small">{{ $user->id === auth()->id() ? 'You' : '-' }}</span>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty

@@ -101,10 +101,15 @@
     </style>
 
     <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Age Groups</h5>
-            <p class="card-subtitle mb-0">Automatic from each player's date of birth. Players move up on their birthday,
-                nothing to update by hand.</p>
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div>
+                <h5 class="card-title mb-0">Age Groups</h5>
+                <p class="card-subtitle mb-0">Automatic from each player's date of birth. Players move up on their birthday,
+                    nothing to update by hand.</p>
+            </div>
+            <a href="{{ route('admin.players.index') }}" class="btn btn-light ac-btn">
+                    <iconify-icon icon="solar:arrow-left-outline"></iconify-icon> All Players
+                </a>
         </div>
         <div class="card-body">
             <div class="row g-3">

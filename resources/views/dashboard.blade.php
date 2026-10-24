@@ -321,30 +321,8 @@
         }
 
         /* action icons: no background */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-pay {
-            color: #16a34a;
-        }
 
         .empty-row {
             padding: 28px 12px !important;
@@ -589,8 +567,8 @@
                             <thead>
                                 <tr>
                                     <th>Player</th>
-                                    <th class="d-none d-sm-table-cell">Guardian</th>
-                                    <th class="text-end">Action</th>
+                                    <th class="d-none d-sm-table-cell">Parent</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -609,13 +587,15 @@
                                             <div class="nm" style="font-size:14px">{{ $p->guardian_name }}</div>
                                             <div class="text-muted" style="font-size:12px">{{ $p->guardian_phone }}</div>
                                         </td>
-                                        <td class="text-end text-nowrap">
-                                            @if ($p->whatsappLink())
-                                                <a href="{{ $p->whatsappLink() }}" target="_blank" rel="noopener"
-                                                    class="act-ico" title="Send WhatsApp reminder">
-                                                    <iconify-icon icon="logos:whatsapp-icon"></iconify-icon>
-                                                </a>
-                                            @endif
+                                        <td>
+                                            <div class="ac-actions">
+                                                @if ($p->whatsappLink())
+                                                    <a href="{{ $p->whatsappLink() }}" target="_blank" rel="noopener"
+                                                        class="btn btn-sm btn-soft-success">
+                                                        <iconify-icon icon="ic:baseline-whatsapp"></iconify-icon><span>Send</span>
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -641,8 +621,8 @@
                                 <tr>
                                     <th>Player</th>
                                     <th class="d-none d-sm-table-cell">Group</th>
-                                    <th>Balance</th>
-                                    <th class="text-end">Action</th>
+                                    <th class="d-none d-sm-table-cell">Balance</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -654,16 +634,19 @@
                                                 <div>
                                                     <div class="nm">{{ $p->name }}</div>
                                                     <div class="sub">{{ $p->player_no }}</div>
+                                                    <div class="d-sm-none mt-1" data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="d-none d-sm-table-cell">{{ $p->ageGroupBadge() }}</td>
-                                        <td data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</td>
-                                        <td class="text-end text-nowrap">
-                                            <button type="button" class="act-ico act-pay" title="Receive payment"
-                                                onclick="openPayment({{ $p->id }}, @js($p->name))">
-                                                <iconify-icon icon="solar:wallet-bold-duotone"></iconify-icon>
-                                            </button>
+                                        <td class="d-none d-sm-table-cell" data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</td>
+                                        <td>
+                                            <div class="ac-actions">
+                                                <button type="button" class="btn btn-sm btn-soft-success"
+                                                    onclick="openPayment({{ $p->id }}, @js($p->name), @js($p->plan()))">
+                                                    <iconify-icon icon="solar:wallet-money-outline"></iconify-icon><span>Pay</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

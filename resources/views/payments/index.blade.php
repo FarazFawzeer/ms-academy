@@ -8,7 +8,7 @@
         $isAdmin = in_array(auth()->user()->type, ['Super Admin', 'Admin']);
         $today = now()->toDateString();
         $monthStart = now()->startOfMonth()->toDateString();
-        $methodColors = ['cash' => '#15803d', 'card' => '#1d4ed8', 'bank' => '#6d28d9', 'online' => '#0e7490'];
+        $methodColors = ['cash' => '#15803d', 'card' => '#1d4ed8', 'bank' => '#6d28d9', 'online' => '#0e7490', 'extra' => '#b45309'];
     @endphp
 
     <style>
@@ -121,31 +121,8 @@
             white-space: nowrap;
         }
 
-        /* Action icons: no background */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-del {
-            color: #dc2626;
-        }
     </style>
 
     <div class="card">
@@ -215,7 +192,7 @@
                             <th class="d-none d-sm-table-cell">Sessions</th>
                             <th class="d-none d-md-table-cell">Method</th>
                             @if ($isAdmin)
-                                <th class="text-end">Action</th>
+                                <th class="text-end">Actions</th>
                             @endif
                         </tr>
                     </thead>
@@ -229,20 +206,22 @@
                                         class="fw-semibold">{{ $p->player?->name }}</a><br>
                                     <small class="text-muted">{{ $p->player?->player_no }}</small>
                                 </td>
-                                <td class="fw-semibold">{{ number_format($p->amount) }}</td>
+                                <td class="fw-semibold">{{ $p->method === 'extra' ? 'Free' : number_format($p->amount) }}</td>
                                 <td class="d-none d-sm-table-cell">
                                     <span class="pay-badge" style="background:#15803d1a;color:#15803d">+{{ $p->sessions }}</span>
                                 </td>
                                 <td class="d-none d-md-table-cell">
                                     <span class="pay-badge"
-                                        style="background:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}1a;color:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}">{{ ucfirst($p->method) }}</span>
+                                        style="background:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}1a;color:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}">{{ $p->method === 'extra' ? 'Extra days' : ucfirst($p->method) }}</span>
                                 </td>
                                 @if ($isAdmin)
-                                    <td class="text-end text-nowrap">
-                                        <button type="button" class="act-ico act-del btn-del"
-                                            data-id="{{ $p->id }}" title="Remove (entered by mistake)">
-                                            <iconify-icon icon="solar:trash-bin-trash-bold-duotone"></iconify-icon>
-                                        </button>
+                                    <td>
+                                        <div class="ac-actions">
+                                            <button type="button" class="btn btn-sm btn-soft-danger btn-del" data-id="{{ $p->id }}"
+                                                title="Remove a payment entered by mistake">
+                                                <iconify-icon icon="solar:trash-bin-trash-outline"></iconify-icon><span class="ac-hide-xs">Delete</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 @endif
                             </tr>

@@ -69,11 +69,17 @@
                 width: auto;
             }
 
-            .rg .rg-name {
-                min-width: 130px;
-                max-width: 150px;
+            /* phones: narrower name column so more practice days fit */
+            .rg-wrap .rg .rg-name {
+                min-width: 118px;
+                max-width: 132px;
                 white-space: normal;
                 padding: 6px 8px;
+                font-size: 12px;
+            }
+
+            .rg-wrap .rg .rg-col {
+                min-width: 42px;
             }
         }
 
@@ -216,12 +222,18 @@
             color: #b91c1c;
         }
 
+        .ab-free {
+            background: #6b72801a;
+            color: #6b7280;
+        }
+
         .na {
             color: #cbd5e1;
             font-size: 16px;
         }
 
         .rg tr.grp td {
+            white-space: nowrap;
             background: #f1f5f9;
             text-align: left;
             padding: 6px 12px;
@@ -312,7 +324,8 @@
             <div class="rg-legend mb-3">
                 <span><iconify-icon icon="solar:check-circle-bold" class="ok" style="font-size:16px"></iconify-icon>
                     Present</span>
-                <span><span class="ab">AB</span> Absent</span>
+                <span><span class="ab">AB</span> Absent (session used)</span>
+                <span><span class="ab ab-free">AB</span> Absent, not counted</span>
                 <span><iconify-icon icon="solar:check-circle-bold" class="ex" style="font-size:16px"></iconify-icon>
                     Extra (not their day)</span>
                 <span><span class="na">&middot;</span> Not their training day</span>
@@ -386,6 +399,14 @@
 
                                             <?php case ('A'): ?>
                                                 <td class="c"><span class="ab">AB</span></td>
+                                            <?php break; ?>
+
+                                            <?php case ('U'): ?>
+                                                <td class="c" title="Absent - not counted, the package was already used up"><span class="ab ab-free">AB</span></td>
+                                            <?php break; ?>
+
+                                            <?php case ('T'): ?>
+                                                <td class="c" title="Today - not marked yet"><span class="na">&ndash;</span></td>
                                             <?php break; ?>
 
                                             <?php case ('X'): ?>

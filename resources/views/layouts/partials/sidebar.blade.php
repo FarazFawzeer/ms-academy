@@ -59,32 +59,14 @@
                 </div>
             </li>
 
-            {{-- Players --}}
+            {{-- Players (Add Player, Age Groups and Print ID Cards are buttons on the Players page) --}}
             <li class="nav-item">
-                <a class="nav-link menu-arrow {{ $open('admin.players.*', 'admin.groups.*') ? '' : 'collapsed' }}" href="#sidebarPlayers"
-                    data-bs-toggle="collapse" role="button"
-                    aria-expanded="{{ $open('admin.players.*', 'admin.groups.*') ? 'true' : 'false' }}" aria-controls="sidebarPlayers">
+                <a class="nav-link {{ $open('admin.players.*', 'admin.groups.*') ? 'active' : '' }}" href="{{ route('admin.players.index') }}">
                     <span class="nav-icon">
                         <iconify-icon icon="solar:users-group-rounded-outline"></iconify-icon>
                     </span>
-                    <span class="nav-text"> Players</span>
+                    <span class="nav-text"> Players </span>
                 </a>
-                <div class="collapse {{ $open('admin.players.*', 'admin.groups.*') ? 'show' : '' }}" id="sidebarPlayers">
-                    <ul class="nav sub-navbar-nav">
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="{{ route('admin.players.index') }}">All Players</a>
-                        </li>
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="{{ route('admin.players.create') }}">Add Player</a>
-                        </li>
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="{{ route('admin.groups.index') }}">Age Groups</a>
-                        </li>
-                        <li class="sub-nav-item">
-                            <a class="sub-nav-link" href="{{ route('admin.players.print') }}">Print ID Cards</a>
-                        </li>
-                    </ul>
-                </div>
             </li>
 
             {{-- Reminders --}}
@@ -123,32 +105,14 @@
                     </a>
                 </li>
 
-                {{-- Coaches --}}
+                {{-- Coaches (Add Coach, Daily Attendance and Salary are buttons on the Coaches page) --}}
                 <li class="nav-item">
-                    <a class="nav-link menu-arrow {{ $open('admin.coaches.*') ? '' : 'collapsed' }}" href="#sidebarCoaches"
-                        data-bs-toggle="collapse" role="button"
-                        aria-expanded="{{ $open('admin.coaches.*') ? 'true' : 'false' }}" aria-controls="sidebarCoaches">
+                    <a class="nav-link {{ $open('admin.coaches.*') ? 'active' : '' }}" href="{{ route('admin.coaches.index') }}">
                         <span class="nav-icon">
                             <iconify-icon icon="solar:user-id-outline"></iconify-icon>
                         </span>
-                        <span class="nav-text"> Coaches</span>
+                        <span class="nav-text"> Coaches </span>
                     </a>
-                    <div class="collapse {{ $open('admin.coaches.*') ? 'show' : '' }}" id="sidebarCoaches">
-                        <ul class="nav sub-navbar-nav">
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="{{ route('admin.coaches.index') }}">All Coaches</a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="{{ route('admin.coaches.create') }}">Add Coach</a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="{{ route('admin.coaches.workdays') }}">Daily Attendance</a>
-                            </li>
-                            <li class="sub-nav-item">
-                                <a class="sub-nav-link" href="{{ route('admin.coaches.salary') }}">Salary</a>
-                            </li>
-                        </ul>
-                    </div>
                 </li>
 
                 {{-- Reports --}}

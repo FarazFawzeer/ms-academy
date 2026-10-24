@@ -2,6 +2,8 @@
     <?php echo $__env->make('layouts.partials.page-title', ['title' => 'Players', 'subtitle' => 'All Players'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <?php echo $__env->make('partials.js-helpers', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
+    <?php $isAdmin = in_array(auth()->user()->type, ['Super Admin', 'Admin']); ?>
+
     <style>
         /* Filter bar: right aligned, one clean row on desktop, stacked on mobile */
         .pl-filters {
@@ -72,43 +74,6 @@
             }
         }
 
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
-
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
-
-        .act-pay {
-            color: #16a34a;
-        }
-
-        .act-view {
-            color: #2563eb;
-        }
-
-        .act-edit {
-            color: #f59e0b;
-        }
-
-        .act-print {
-            color: #7c3aed;
-        }
     </style>
 
     <div class="card">
@@ -119,6 +84,9 @@
                     <p class="card-subtitle mb-0"><?php echo e($players->total()); ?> player(s) found.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
+                    <a href="<?php echo e(route('admin.groups.index')); ?>" class="btn btn-outline-secondary ac-btn">
+                        <iconify-icon icon="solar:layers-outline"></iconify-icon> Age Groups
+                    </a>
                     <a href="<?php echo e(route('admin.players.print', array_filter(['group' => $group]))); ?>"
                         class="btn btn-outline-secondary">
                         <iconify-icon icon="solar:printer-outline" class="me-1"></iconify-icon> Print ID Cards
@@ -173,56 +141,69 @@
                     <thead class="table-light">
                         <tr>
                             <th>Player</th>
-                            <th>Group</th>
-                            <th class="d-none d-md-table-cell">Days</th>
-                            <th class="d-none d-lg-table-cell">Guardian</th>
-                            <th>Sessions</th>
-                            <th class="text-end">Action</th>
+                            <th class="d-none d-sm-table-cell">Group</th>
+                            <th class="d-none d-lg-table-cell">Days</th>
+                            <th class="d-none d-xl-table-cell">Parent</th>
+                            <th class="d-none d-sm-table-cell">Sessions</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php $__empty_1 = true; $__currentLoopData = $players; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
                                 <td>
-                                    <a href="<?php echo e(route('admin.players.show', $p)); ?>"
-                                        class="d-flex align-items-center gap-2 text-reset text-decoration-none">
-                                        <img src="<?php echo e($p->photo_url); ?>" alt="<?php echo e($p->name); ?>" class="avatar-sm rounded-circle"
-                                            style="object-fit:cover" loading="lazy">
-                                        <div>
-                                            <h6 class="mb-0"><?php echo e($p->name); ?>
+                                    <a href="<?php echo e(route('admin.players.show', $p)); ?>" class="ac-person ac-photo-sm-only">
+                                        <img src="<?php echo e($p->photo_url); ?>" alt="" loading="lazy">
+                                        <span class="min-w-0">
+                                            <span class="nm d-block"><?php echo e($p->name); ?>
 
                                                 <?php if (! ($p->is_active)): ?>
                                                     <span class="badge ms-1" style="background:#6b72801a;color:#4b5563">Inactive</span>
                                                 <?php endif; ?>
-                                            </h6>
-                                            <small class="text-muted"><?php echo e($p->player_no); ?> · <?php echo e($p->age); ?> yrs</small>
-                                        </div>
+                                            </span>
+                                            <span class="sub d-block"><?php echo e($p->player_no); ?> &middot; <?php echo e($p->age); ?> yrs</span>
+                                            
+                                            <span class="d-flex d-sm-none gap-1 mt-1" data-balance="<?php echo e($p->id); ?>"><?php echo e($p->balanceBadge()); ?></span>
+                                        </span>
                                     </a>
                                 </td>
-                                <td><?php echo e($p->ageGroupBadge()); ?></td>
-                                <td class="d-none d-md-table-cell"><?php echo e($p->daysBadge()); ?></td>
-                                <td class="d-none d-lg-table-cell">
+                                <td class="d-none d-sm-table-cell"><?php echo e($p->ageGroupBadge()); ?></td>
+                                <td class="d-none d-lg-table-cell"><?php echo e($p->daysBadge()); ?></td>
+                                <td class="d-none d-xl-table-cell">
                                     <?php echo e($p->guardian_name); ?><br>
                                     <small class="text-muted"><?php echo e($p->guardian_phone); ?></small>
                                 </td>
-                                <td data-balance="<?php echo e($p->id); ?>"><?php echo e($p->balanceBadge()); ?></td>
-                                <td class="text-end text-nowrap">
-                                    <button type="button" class="act-ico act-pay" title="Receive payment"
-                                        onclick="openPayment(<?php echo e($p->id); ?>, <?php echo \Illuminate\Support\Js::from($p->name)->toHtml() ?>)">
-                                        <iconify-icon icon="solar:wallet-bold-duotone"></iconify-icon>
-                                    </button>
-                                    <a href="<?php echo e(route('admin.players.show', $p)); ?>" class="act-ico act-view"
-                                        title="View profile">
-                                        <iconify-icon icon="solar:eye-bold-duotone"></iconify-icon>
-                                    </a>
-                                    <a href="<?php echo e(route('admin.players.edit', $p)); ?>" class="act-ico act-edit"
-                                        title="Edit player">
-                                        <iconify-icon icon="solar:pen-bold-duotone"></iconify-icon>
-                                    </a>
-                                    <a href="<?php echo e(route('admin.players.cards', ['ids' => $p->id])); ?>" target="_blank"
-                                        class="act-ico act-print" title="Print ID card">
-                                        <iconify-icon icon="solar:printer-bold-duotone"></iconify-icon>
-                                    </a>
+                                <td class="d-none d-sm-table-cell" data-balance="<?php echo e($p->id); ?>"><?php echo e($p->balanceBadge()); ?></td>
+                                <td>
+                                    <div class="ac-actions">
+                                        <button type="button" class="btn btn-sm btn-soft-success"
+                                            onclick="openPayment(<?php echo e($p->id); ?>, <?php echo \Illuminate\Support\Js::from($p->name)->toHtml() ?>, <?php echo \Illuminate\Support\Js::from($p->plan())->toHtml() ?>)">
+                                            <iconify-icon icon="solar:wallet-money-outline"></iconify-icon><span>Pay</span>
+                                        </button>
+                                        <a href="<?php echo e(route('admin.players.edit', $p)); ?>" class="btn btn-sm btn-soft-primary" title="Edit details">
+                                            <iconify-icon icon="solar:pen-outline"></iconify-icon><span class="ac-hide-xs">Edit</span>
+                                        </a>
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-soft-secondary ac-more"
+                                                data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions"
+                                                title="More actions">
+                                                <iconify-icon icon="solar:menu-dots-bold"></iconify-icon>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="<?php echo e(route('admin.players.show', $p)); ?>">
+                                                        <iconify-icon icon="solar:user-id-outline"></iconify-icon> View profile</a></li>
+                                                <li><a class="dropdown-item" href="<?php echo e(route('admin.players.cards', ['ids' => $p->id])); ?>"
+                                                        target="_blank">
+                                                        <iconify-icon icon="solar:printer-outline"></iconify-icon> Print ID card</a></li>
+                                                <?php if($isAdmin): ?>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><button type="button" class="dropdown-item text-danger btn-delete-player"
+                                                            data-id="<?php echo e($p->id); ?>" data-name="<?php echo e($p->name); ?>">
+                                                            <iconify-icon icon="solar:trash-bin-trash-outline"></iconify-icon> Delete player</button></li>
+                                                <?php endif; ?>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
@@ -248,6 +229,15 @@
             var form = document.getElementById('playerFilter');
             var input = document.getElementById('plSearch');
             var timer;
+
+            // Admin: delete a player for good (asks first, suggests deactivating instead)
+            document.querySelectorAll('.btn-delete-player').forEach(function(b) {
+                b.addEventListener('click', function() {
+                    deletePlayer(b.dataset.id, b.dataset.name, function() {
+                        location.reload();
+                    });
+                });
+            });
 
             // Auto search 0.5s after the user stops typing
             input.addEventListener('input', function() {

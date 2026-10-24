@@ -138,6 +138,32 @@
                 }
             }
 
+            // Delete a player for good: a clear warning first (history and payments go too)
+            window.deletePlayer = async function(id, name, done) {
+                var r = await Swal.fire({
+                    title: 'Delete ' + name + '?',
+                    html: 'This removes the player <strong>and all their attendance and payment history</strong>. ' +
+                        'Their payments will no longer show in the reports.<br><br>' +
+                        'If they just stopped coming, use <strong>Deactivate</strong> on their profile instead - the history is kept.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    confirmButtonText: 'Yes, delete for good',
+                    cancelButtonText: 'Keep player',
+                    focusCancel: true
+                });
+                if (!r.isConfirmed) return;
+                var d = await call("{{ url('admin/players') }}/" + id, {
+                    method: 'DELETE'
+                });
+                if (d.success) {
+                    toast(d.message);
+                    if (done) setTimeout(done, 700);
+                } else {
+                    Swal.fire('Error', d.message || 'Something went wrong.', 'error');
+                }
+            };
+
             function debounce(fn, ms) {
                 var t;
                 return function() {

@@ -4,14 +4,22 @@ return [
 
     'name' => 'MS Football Academy',
 
-    // Fee rules - change here, nothing else needs touching
-    'fee'                  => 3500,   // LKR per package
-    'sessions_per_package' => 8,      // sessions the fee covers
-    'remind_at_session'    => 6,      // reminder is queued when this session is completed
+    /*
+    | Fee plans - chosen automatically from the player's training days.
+    | Key = training days ('fri', 'sun' or 'fri,sun'), fee in LKR, sessions the fee covers.
+    | Every practice on the player's training days uses one session, present or absent.
+    | When the package is used up, missed days stop counting; attending without paying shows as "due".
+    */
+    'plans' => [
+        'fri,sun' => ['label' => 'Friday & Sunday', 'fee' => 3500, 'sessions' => 8],
+        'fri'     => ['label' => 'Friday only',     'fee' => 2500, 'sessions' => 4],
+        'sun'     => ['label' => 'Sunday only',     'fee' => 2500, 'sessions' => 4],
+    ],
 
     // Player number prefix: MS-0001, MS-0002 ...
     'player_prefix' => 'MS',
 
+    // Renewal reminder is queued when one week of practice is left (2 sessions for Fri+Sun, 1 for one day).
     // Placeholders: {guardian} {player} {used} {total} {fee} {academy}
     'whatsapp_message' => "Hi {guardian}, {player} has completed {used} of {total} sessions at {academy}. "
         . "Please renew for the next {total} sessions (LKR {fee}). Thank you!",

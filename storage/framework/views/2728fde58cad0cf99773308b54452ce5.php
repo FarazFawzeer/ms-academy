@@ -2,12 +2,9 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-12 text-center">
-                <p class="mb-0">
-                    <script>
-                        document.write(new Date().getFullYear())
-                    </script> &copy; VacayGuider</a>
-                </p>
+                <p class="mb-0"><?php echo e(date('Y')); ?> &copy; <?php echo e(config('academy.name')); ?></p>
             </div>
         </div>
     </div>
-</footer><?php /**PATH F:\Nexas\ms-academy\resources\views/layouts/partials/footer.blade.php ENDPATH**/ ?>
+</footer>
+<?php /**PATH F:\Nexas\ms-academy\resources\views/layouts/partials/footer.blade.php ENDPATH**/ ?>

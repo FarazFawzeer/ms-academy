@@ -7,4 +7,6 @@
 
 <?php echo app('Illuminate\Foundation\Vite')([ 'resources/scss/icons.scss', 'resources/scss/style.scss']); ?>
 
+<?php echo $__env->make('partials.app-ui', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
 <?php echo app('Illuminate\Foundation\Vite')([ 'resources/js/config.js']); ?><?php /**PATH F:\Nexas\ms-academy\resources\views/layouts/partials/head-css.blade.php ENDPATH**/ ?>
