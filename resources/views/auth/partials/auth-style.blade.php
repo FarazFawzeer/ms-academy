@@ -1,169 +1,187 @@
-{{-- Shared look for the login and lock screen pages --}}
+{{-- Shared look for the login and lock screen pages: dark, compact, one centred card. --}}
 <style>
+    /* colours taken from the academy logo: deep navy + gold */
     :root {
-        --lg-navy: #14284b;
-        --lg-blue: #214b7d;
-        --lg-gold: #f2b705;
-        --lg-text: #1b2437;
-        --lg-muted: #6b768b;
-        --lg-line: #d9dfea;
+        --lg-bg: #07142b;
+        --lg-card: #0d1f3f;
+        --lg-field: #0a1933;
+        --lg-line: rgba(148, 178, 222, .14);
+        --lg-line-strong: rgba(148, 178, 222, .26);
+        --lg-text: #e6edf7;
+        --lg-heading: #ffffff;
+        --lg-muted: #9fb0c8;
+        --lg-faint: #6b7f9e;
+        --lg-gold: #f5b301;
+        --lg-gold-hover: #ffc21a;
+        --lg-gold-soft: rgba(245, 179, 1, .18);
+        /* kept names so page-specific styles keep working */
+        --lg-teal: var(--lg-gold);
+        --lg-teal-btn: var(--lg-gold);
+        --lg-teal-btn-hover: var(--lg-gold-hover);
     }
 
     body.authentication-bg,
     .authentication-bg {
-        background: var(--lg-blue) !important;
+        background: var(--lg-bg) !important;
     }
 
+    /* ---------- page ---------- */
     .lg-page {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px 16px;
-        background:
-            radial-gradient(circle at 15% 20%, rgba(242, 183, 5, .14), transparent 38%),
-            radial-gradient(circle at 85% 85%, rgba(255, 255, 255, .10), transparent 42%),
-            linear-gradient(135deg, var(--lg-navy), var(--lg-blue));
-        font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-    }
-
-    .lg-card {
-        width: 100%;
-        max-width: 940px;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        background: #fff;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 30px 70px rgba(5, 15, 40, .45);
-    }
-
-    /* ---- brand side ---- */
-    .lg-brand {
         position: relative;
-        padding: 48px 40px;
-        color: #fff;
+        min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        background: linear-gradient(160deg, var(--lg-navy), var(--lg-blue));
+        padding: 24px 16px;
         overflow: hidden;
+        background:
+            radial-gradient(700px 480px at 50% -12%, rgba(37, 99, 235, .22), transparent 70%),
+            radial-gradient(520px 380px at 50% 112%, rgba(245, 179, 1, .07), transparent 70%),
+            var(--lg-bg);
+        font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+        color: var(--lg-text);
+        -webkit-font-smoothing: antialiased;
     }
 
-    .lg-brand::before,
-    .lg-brand::after {
+    /* faint football pitch lines: halfway line + centre circle */
+    .lg-page::before {
         content: "";
         position: absolute;
-        border-radius: 50%;
-        border: 1px solid rgba(255, 255, 255, .12);
+        inset: 0;
+        pointer-events: none;
+        opacity: .5;
+        background:
+            radial-gradient(circle at 50% 50%, transparent 219px, rgba(148, 163, 184, .07) 220px, rgba(148, 163, 184, .07) 221px, transparent 222px),
+            linear-gradient(90deg, transparent calc(50% - .5px), rgba(148, 163, 184, .06) calc(50% - .5px), rgba(148, 163, 184, .06) calc(50% + .5px), transparent calc(50% + .5px));
     }
 
-    .lg-brand::before {
-        width: 320px;
-        height: 320px;
-        right: -120px;
-        top: -120px;
-    }
-
-    .lg-brand::after {
-        width: 240px;
-        height: 240px;
-        left: -90px;
-        bottom: -90px;
-        border-color: rgba(242, 183, 5, .35);
-    }
-
-    .lg-brand>* {
+    .lg-wrap {
         position: relative;
         z-index: 1;
+        width: 100%;
+        max-width: 400px;
+        margin: auto;
+        /* centred when there is room, scrolls on short screens */
+    }
+
+    /* ---------- card ---------- */
+    .lg-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 140px), var(--lg-card);
+        border: 1px solid var(--lg-line);
+        border-radius: 16px;
+        padding: 36px 32px 28px;
+        box-shadow: 0 30px 70px rgba(1, 6, 20, .6);
+    }
+
+    .lg-card::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--lg-gold) 30%, var(--lg-gold) 70%, transparent);
+        opacity: .9;
+    }
+
+    .lg-head {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 26px;
     }
 
     .lg-logo {
-        width: 120px;
-        height: 120px;
-        padding: 8px;
+        width: 76px;
+        height: 76px;
+        padding: 7px;
         border-radius: 50%;
         background: #fff;
         object-fit: contain;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+        box-shadow: 0 0 0 4px var(--lg-gold-soft), 0 10px 24px rgba(0, 0, 0, .35);
+        margin-bottom: 14px;
+    }
+
+    .lg-head .name {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--lg-heading);
+        line-height: 1.25;
+        letter-spacing: .1px;
+    }
+
+    .lg-head .tag {
+        margin: 4px 0 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--lg-gold);
+    }
+
+    .lg-intro {
+        text-align: center;
         margin-bottom: 22px;
     }
 
-    .lg-brand h1 {
-        margin: 0 0 6px;
-        font-size: 26px;
-        line-height: 1.2;
-        font-weight: 700;
-        letter-spacing: .3px;
-        color: #fff;
-    }
-
-    .lg-brand .tag {
-        margin: 0;
-        color: var(--lg-gold);
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-    }
-
-
-    /* ---- form side ---- */
-    .lg-form {
-        padding: 48px 44px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-
-    .lg-form h2 {
+    .lg-title {
         margin: 0 0 4px;
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--lg-text);
+        font-size: 21px;
+        font-weight: 600;
+        color: var(--lg-heading);
+        letter-spacing: -.2px;
     }
 
-    .lg-form .sub {
-        margin: 0 0 26px;
+    .lg-sub {
+        margin: 0;
         font-size: 14px;
         color: var(--lg-muted);
     }
 
+    /* ---------- messages ---------- */
     .lg-alert {
         display: flex;
         gap: 10px;
         align-items: flex-start;
-        padding: 11px 14px;
+        padding: 10px 12px;
         margin-bottom: 18px;
         border-radius: 10px;
         font-size: 13.5px;
-        line-height: 1.4;
+        line-height: 1.45;
+    }
+
+    .lg-alert svg {
+        flex: none;
+        margin-top: 1px;
     }
 
     .lg-alert.err {
-        background: #fdecec;
-        color: #9b1c1c;
-        border: 1px solid #f5c2c2;
+        background: rgba(239, 68, 68, .10);
+        border: 1px solid rgba(239, 68, 68, .35);
+        color: #fca5a5;
     }
 
     .lg-alert.ok {
-        background: #e8f6ee;
-        color: #166534;
-        border: 1px solid #bfe5cc;
+        background: rgba(34, 197, 94, .10);
+        border: 1px solid rgba(34, 197, 94, .35);
+        color: #86efac;
     }
 
+    /* ---------- fields ---------- */
     .lg-field {
-        margin-bottom: 18px;
+        margin-bottom: 16px;
     }
 
     .lg-field label {
         display: block;
-        margin-bottom: 7px;
+        margin-bottom: 6px;
         font-size: 13px;
-        font-weight: 600;
-        color: var(--lg-text);
+        font-weight: 500;
+        color: #cbd5e1;
     }
 
     .lg-input {
@@ -172,82 +190,103 @@
 
     .lg-input input {
         width: 100%;
-        height: 48px;
-        padding: 0 44px 0 44px;
+        height: 46px;
+        padding: 0 44px 0 42px;
         font-size: 15px;
         color: var(--lg-text);
-        background: #f6f8fb;
-        border: 1.5px solid var(--lg-line);
-        border-radius: 12px;
+        background: var(--lg-field);
+        border: 1px solid var(--lg-line-strong);
+        border-radius: 10px;
         outline: none;
-        transition: border-color .15s, box-shadow .15s, background .15s;
+        transition: border-color .15s, box-shadow .15s;
         -webkit-appearance: none;
+        caret-color: var(--lg-teal);
     }
 
     .lg-input input::placeholder {
-        color: #98a2b5;
+        color: var(--lg-faint);
+    }
+
+    .lg-input input:hover {
+        border-color: rgba(148, 163, 184, .4);
     }
 
     .lg-input input:focus {
-        background: #fff;
-        border-color: var(--lg-blue);
-        box-shadow: 0 0 0 4px rgba(33, 75, 125, .14);
+        border-color: var(--lg-gold);
+        box-shadow: 0 0 0 3px var(--lg-gold-soft);
+    }
+
+    /* browser autofill: keep the dark field instead of the yellow fill */
+    .lg-input input:-webkit-autofill,
+    .lg-input input:-webkit-autofill:hover,
+    .lg-input input:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--lg-text);
+        -webkit-box-shadow: 0 0 0 1000px var(--lg-field) inset;
+        transition: background-color 9999s ease-out;
+    }
+
+    .lg-input input:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0 1000px var(--lg-field) inset, 0 0 0 3px var(--lg-gold-soft);
     }
 
     .lg-input.bad input {
-        border-color: #e05757;
-        background: #fff7f7;
+        border-color: rgba(239, 68, 68, .7);
     }
 
     .lg-input .lead {
         position: absolute;
-        left: 14px;
+        left: 13px;
         top: 50%;
-        width: 19px;
-        height: 19px;
+        width: 18px;
+        height: 18px;
         transform: translateY(-50%);
-        stroke: #8793a8;
+        stroke: var(--lg-faint);
         pointer-events: none;
+    }
+
+    .lg-input:focus-within .lead {
+        stroke: var(--lg-teal);
     }
 
     .lg-input .eye {
         position: absolute;
-        right: 6px;
+        right: 5px;
         top: 50%;
         transform: translateY(-50%);
-        width: 38px;
-        height: 38px;
+        width: 36px;
+        height: 36px;
         border: 0;
         background: transparent;
-        border-radius: 9px;
+        border-radius: 8px;
         display: grid;
         place-items: center;
         cursor: pointer;
-        color: #8793a8;
+        color: var(--lg-faint);
+        transition: background .15s, color .15s;
     }
 
-    .lg-input .eye:hover {
-        background: #e9edf4;
-        color: var(--lg-blue);
+    .lg-input .eye:hover,
+    .lg-input .eye.on {
+        background: rgba(148, 163, 184, .12);
+        color: var(--lg-text);
+    }
+
+    .lg-input .eye:focus-visible {
+        outline: 2px solid var(--lg-teal);
+        outline-offset: 1px;
     }
 
     .lg-input .eye svg {
-        width: 19px;
-        height: 19px;
+        width: 18px;
+        height: 18px;
         stroke: currentColor;
-    }
-
-    .lg-err {
-        margin-top: 6px;
-        font-size: 12.5px;
-        color: #c53030;
     }
 
     .lg-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin: 2px 0 22px;
+        margin: 4px 0 22px;
     }
 
     .lg-check {
@@ -255,55 +294,60 @@
         align-items: center;
         gap: 9px;
         font-size: 13.5px;
-        color: var(--lg-text);
+        color: #cbd5e1;
         cursor: pointer;
         user-select: none;
     }
 
     .lg-check input {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--lg-blue);
+        width: 16px;
+        height: 16px;
+        accent-color: var(--lg-teal-btn);
         cursor: pointer;
     }
 
+    /* ---------- button ---------- */
     .lg-btn {
         width: 100%;
-        height: 50px;
+        height: 46px;
         border: 0;
-        border-radius: 12px;
-        font-size: 15.5px;
+        border-radius: 10px;
+        font-size: 15px;
         font-weight: 600;
-        letter-spacing: .2px;
-        color: #fff;
+        color: #0b1b36;
         cursor: pointer;
-        background: linear-gradient(135deg, var(--lg-blue), var(--lg-navy));
-        box-shadow: 0 10px 22px rgba(20, 40, 75, .30);
+        background: var(--lg-teal-btn);
+        box-shadow: 0 8px 20px rgba(245, 179, 1, .18);
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 9px;
-        transition: transform .1s, box-shadow .15s, opacity .15s;
+        transition: background .15s, transform .1s, opacity .15s;
     }
 
     .lg-btn:hover {
-        box-shadow: 0 14px 28px rgba(20, 40, 75, .38);
+        background: var(--lg-teal-btn-hover);
     }
 
     .lg-btn:active {
         transform: translateY(1px);
     }
 
+    .lg-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--lg-card), 0 0 0 5px var(--lg-teal);
+    }
+
     .lg-btn:disabled {
-        opacity: .75;
+        opacity: .7;
         cursor: wait;
     }
 
     .lg-spin {
-        width: 17px;
-        height: 17px;
-        border: 2px solid rgba(255, 255, 255, .45);
-        border-top-color: #fff;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(11, 27, 54, .3);
+        border-top-color: #0b1b36;
         border-radius: 50%;
         animation: lgspin .7s linear infinite;
     }
@@ -314,81 +358,64 @@
         }
     }
 
-    .lg-foot {
-        margin: 26px 0 0;
-        text-align: center;
-        font-size: 12.5px;
-        color: var(--lg-muted);
+    .lg-link {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--lg-teal);
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
     }
 
-    /* ---- tablet / phone ---- */
-    @media (max-width: 767.98px) {
+    .lg-link:hover {
+        text-decoration: underline;
+    }
+
+    .lg-foot {
+        margin: 20px 0 0;
+        text-align: center;
+        font-size: 12px;
+        color: var(--lg-faint);
+    }
+
+    /* ---------- phones: same compact card, a little less padding ---------- */
+    @media (max-width: 575.98px) {
         .lg-page {
-            align-items: flex-start;
-            padding: 16px 14px 28px;
+            padding: 20px 16px;
+        }
+
+        .lg-page::before {
+            display: none;
         }
 
         .lg-card {
-            grid-template-columns: 1fr;
-            max-width: 460px;
-            margin-top: 4vh;
-            border-radius: 18px;
+            padding: 28px 20px 22px;
+            border-radius: 14px;
         }
 
-        .lg-brand {
-            flex-direction: row;
-            align-items: center;
-            gap: 14px;
-            padding: 20px 22px;
-            flex-wrap: wrap;
-            text-align: left;
+        .lg-head {
+            margin-bottom: 20px;
         }
 
         .lg-logo {
-            width: 62px;
-            height: 62px;
+            width: 64px;
+            height: 64px;
             padding: 6px;
-            margin: 0;
+            margin-bottom: 12px;
         }
 
-        .lg-brand .txt {
-            flex: 1;
-            min-width: 0;
+        .lg-head .name {
+            font-size: 17px;
         }
 
-        .lg-brand h1 {
+        .lg-title {
             font-size: 19px;
-            margin-bottom: 3px;
-        }
-
-        .lg-brand .tag {
-            margin: 0;
-            font-size: 10.5px;
-            letter-spacing: 1.6px;
-        }
-
-
-        .lg-form {
-            padding: 26px 22px 24px;
-        }
-
-        .lg-form h2 {
-            font-size: 21px;
-        }
-
-        .lg-form .sub {
-            margin-bottom: 20px;
         }
 
         /* 16px stops iPhone Safari zooming into the field */
         .lg-input input {
             font-size: 16px;
-        }
-    }
-
-    @media (max-width: 360px) {
-        .lg-brand .tag {
-            display: none;
         }
     }
 </style>

@@ -9,38 +9,66 @@
 
     <style>
         .lg-me {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+
+        .lg-me .pic {
             position: relative;
-            width: 92px;
-            height: 92px;
-            margin: 0 0 14px;
+            flex-shrink: 0;
         }
 
         .lg-me img {
-            width: 92px;
-            height: 92px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #fff;
-            box-shadow: 0 0 0 2px var(--lg-line), 0 8px 20px rgba(20, 40, 75, .18);
+            border: 2px solid var(--lg-line-strong);
         }
 
         .lg-me .badge-lock {
             position: absolute;
-            right: -2px;
-            bottom: 0;
-            width: 30px;
-            height: 30px;
+            right: -3px;
+            bottom: -3px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             display: grid;
             place-items: center;
             background: var(--lg-gold);
-            border: 3px solid #fff;
+            border: 2px solid var(--lg-card);
         }
 
         .lg-me .badge-lock svg {
-            width: 14px;
-            height: 14px;
-            stroke: var(--lg-navy);
+            width: 12px;
+            height: 12px;
+            stroke: #1e293b;
+        }
+
+        .lg-me .lg-title {
+            margin: 0;
+        }
+
+        .lg-me .lg-sub {
+            margin: 2px 0 0;
+        }
+
+        /* the user's photo leads here: a smaller academy logo */
+        .lg-head .lg-logo {
+            width: 56px;
+            height: 56px;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        .lg-head {
+            padding-bottom: 20px;
+            margin-bottom: 22px;
+            border-bottom: 1px solid var(--lg-line);
         }
 
         .lg-back {
@@ -48,32 +76,6 @@
             text-align: center;
             font-size: 13.5px;
             color: var(--lg-muted);
-        }
-
-        .lg-link {
-            padding: 0;
-            border: 0;
-            background: none;
-            color: var(--lg-blue);
-            font: inherit;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .lg-link:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 767.98px) {
-            .lg-me {
-                width: 80px;
-                height: 80px;
-            }
-
-            .lg-me img {
-                width: 80px;
-                height: 80px;
-            }
         }
     </style>
 
@@ -83,38 +85,39 @@
     @endphp
 
     <div class="lg-page">
-        <div class="lg-card">
+        <div class="lg-wrap">
+            <div class="lg-card">
 
-            {{-- Brand --}}
-            <div class="lg-brand">
-                <img src="/images/ms-logo.png" alt="{{ config('academy.name') }}" class="lg-logo">
-                <div class="txt">
-                    <h1>{{ config('academy.name', 'MS Football Academy') }}</h1>
+                {{-- Brand --}}
+                <div class="lg-head">
+                    <img src="/images/ms-logo.png" alt="" class="lg-logo">
+                    <p class="name">{{ config('academy.name', 'MS Football Academy') }}</p>
                     <p class="tag">Academy Management</p>
                 </div>
-            </div>
 
-            {{-- Unlock form --}}
-            <div class="lg-form">
+                {{-- Who is locked --}}
                 <div class="lg-me">
-                    <img src="{{ $me?->image_path ? asset($me->image_path) : asset('images/users/avatar-6.jpg') }}"
-                        alt="{{ $me?->name ?? 'User' }}">
-                    <span class="badge-lock">
-                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"
-                            stroke-linejoin="round">
-                            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
-                            <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
-                        </svg>
+                    <span class="pic">
+                        <img src="{{ $me?->image_path ? asset($me->image_path) : asset('images/users/avatar-6.jpg') }}"
+                            alt="">
+                        <span class="badge-lock">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+                                <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+                            </svg>
+                        </span>
                     </span>
+                    <div class="min-w-0">
+                        <h1 class="lg-title">Hi, {{ $me?->name ?? 'there' }}</h1>
+                        <p class="lg-sub">Screen locked. Enter your password to continue.</p>
+                    </div>
                 </div>
-
-                <h2>Hi, {{ $me?->name ?? 'there' }}</h2>
-                <p class="sub">Your session is locked. Enter your password to continue.</p>
 
                 @if ($loginError)
                     <div class="lg-alert err" role="alert">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px">
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="9.5" />
                             <path d="M12 7.5v5.5M12 16.5h.01" />
                         </svg>
@@ -136,7 +139,8 @@
                             </svg>
                             <input type="password" id="password" name="password" placeholder="Enter your password"
                                 autocomplete="current-password" required autofocus>
-                            <button type="button" class="eye" id="togglePw" aria-label="Show password" title="Show / hide password">
+                            <button type="button" class="eye" id="togglePw" aria-label="Show password"
+                                aria-pressed="false" title="Show / hide password">
                                 <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"
                                     stroke-linejoin="round">
                                     <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
@@ -146,15 +150,16 @@
                         </div>
                     </div>
 
-                    <button class="lg-btn" type="submit" id="unlockBtn">Unlock</button>
+                    <button class="lg-btn" type="submit" id="unlockBtn" style="margin-top:6px">Unlock</button>
                 </form>
 
                 <form method="POST" action="{{ route('logout') }}" class="lg-back">
                     @csrf
                     Not you? <button type="submit" class="lg-link">Sign in as someone else</button>
                 </form>
-                <p class="lg-foot" style="margin-top:18px">&copy; {{ date('Y') }} {{ config('academy.name', 'MS Football Academy') }}</p>
             </div>
+
+            <p class="lg-foot">&copy; {{ date('Y') }} {{ config('academy.name', 'MS Football Academy') }}</p>
         </div>
     </div>
 
@@ -165,8 +170,9 @@
             eye.addEventListener('click', function() {
                 var show = pw.type === 'password';
                 pw.type = show ? 'text' : 'password';
+                eye.classList.toggle('on', show);
+                eye.setAttribute('aria-pressed', show ? 'true' : 'false');
                 eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-                eye.style.color = show ? '#214b7d' : '';
                 pw.focus();
             });
 
