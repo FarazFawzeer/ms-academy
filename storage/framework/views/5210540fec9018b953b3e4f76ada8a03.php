@@ -88,18 +88,46 @@
         AC.form(form, {
             box: box,
             onSuccess: function(d) {
-                AC.toast(d.message);
+                var id = current;
                 // refresh every "sessions left" badge for this player on the page
-                document.querySelectorAll('[data-balance="' + current + '"]').forEach(function(el) {
+                document.querySelectorAll('[data-balance="' + id + '"]').forEach(function(el) {
                     el.innerHTML = d.badge;
                 });
                 bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                 document.dispatchEvent(new CustomEvent('payment:saved', {
                     detail: {
-                        id: current,
+                        id: id,
                         data: d
                     }
                 }));
+
+                // success message with an Undo button (stays 12 s, pauses while the mouse is on it)
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: d.message,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Undo',
+                    confirmButtonColor: '#475569',
+                    timer: 12000,
+                    timerProgressBar: true,
+                    didOpen: function(t) {
+                        t.addEventListener('mouseenter', Swal.stopTimer);
+                        t.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                }).then(async function(r) {
+                    if (r.isConfirmed && d.undo_url) await undoPayment(d.undo_url, {
+                        confirm: false
+                    });
+                    // the page may refresh now (profile) - after the Undo chance is over
+                    document.dispatchEvent(new CustomEvent('payment:settled', {
+                        detail: {
+                            id: id,
+                            undone: !!r.isConfirmed
+                        }
+                    }));
+                });
             }
         });
     })();

@@ -7,6 +7,7 @@ use App\Models\Player;
 use App\Models\PracticeSession;
 use App\Support\AgeGroup;
 use App\Support\ImageUpload;
+use App\Support\PlayerSessions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,19 +53,8 @@ class PlayerController extends Controller
     {
         $plan = Player::planFor(Player::normaliseDays($request->input('days')));
 
-        // payment on joining: now = paying today, before = paid before the system (part used), none = not paid yet
-        $v = Validator::make($request->all(), $this->rules() + [
-            'payment_mode' => 'nullable|in:now,before,none',
-            'paid_on'      => 'nullable|date|before_or_equal:today',
-            'used'         => 'nullable|integer|min:0|max:' . $plan['sessions'],
-            'used_dates'   => 'nullable|array|max:' . $plan['sessions'],
-            'used_dates.*' => 'nullable|date|before_or_equal:today|distinct',
-        ], $this->messages() + [
-            'used.max'                    => 'This plan has only ' . $plan['sessions'] . ' sessions.',
-            'used_dates.*.distinct'       => 'The same session date is entered twice.',
-            'used_dates.*.before_or_equal' => 'Session dates cannot be in the future.',
-            'paid_on.before_or_equal'     => 'The payment date cannot be in the future.',
-        ]);
+        $v = Validator::make($request->all(), $this->rules() + $this->packageRules($request, $plan, false),
+            $this->messages() + $this->packageMessages($plan));
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
         }
@@ -85,11 +75,7 @@ class PlayerController extends Controller
                 $player = Player::create($data);
                 $player->update(['player_no' => sprintf('%s-%04d', config('academy.player_prefix', 'MS'), $player->id)]);
 
-                if ($mode === 'now') {
-                    Payment::record($player->id, (float) $plan['fee'], (int) $plan['sessions'], 'cash', 'First payment on joining', $request->user()?->id);
-                } elseif ($mode === 'before') {
-                    $this->recordEarlierPackage($player, $plan, $request);
-                }
+                $this->applyPackage($player, $mode, $plan, $request, 'First payment on joining');
 
                 return $player;
             });
@@ -132,7 +118,10 @@ class PlayerController extends Controller
 
     public function update(Request $request, Player $player)
     {
-        $v = Validator::make($request->all(), $this->rules(), $this->messages());
+        $plan = Player::planFor(Player::normaliseDays($request->input('days')));
+
+        $v = Validator::make($request->all(), $this->rules() + $this->packageRules($request, $plan, true),
+            $this->messages() + $this->packageMessages($plan));
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
         }
@@ -153,7 +142,22 @@ class PlayerController extends Controller
             return response()->json(['success' => false, 'errors' => ['photo' => [$e->getMessage()]]], 422);
         }
 
-        $player->update($data);
+        $mode = $request->input('payment_mode') ?: 'keep';
+
+        DB::transaction(function () use ($player, $data, $mode, $plan, $request) {
+            $player->fill($data);
+            $daysChanged = $player->isDirty('training_days') || $player->isDirty('joined_at');
+            $player->save();
+            $player->refresh();
+
+            // new training days / joining date: absences that no longer apply go, their sessions come back
+            // (only then - a day the admin marked absent by hand stays as it is on a normal edit)
+            if ($daysChanged) {
+                PlayerSessions::removeWrongDayAbsences($player);
+            }
+
+            $this->applyPackage($player, $mode, $plan, $request, 'Payment added from Edit Player');
+        });
 
         return response()->json([
             'success'  => true,
@@ -178,6 +182,79 @@ class PlayerController extends Controller
             'success'  => true,
             'message'  => $name . ' was deleted.',
             'redirect' => route('admin.players.index'),
+        ]);
+    }
+
+    /**
+     * Admin only: what is recorded for one date (for the "Mark attendance" popup).
+     * Any date can be marked; this only tells the admin what the day was.
+     */
+    public function dayInfo(Request $request, Player $player)
+    {
+        $v = Validator::make($request->all(), ['date' => 'required|date']);
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'message' => 'Choose a date.'], 422);
+        }
+
+        $date    = Carbon::parse($request->input('date'))->toDateString();
+        $session = PracticeSession::forDate($date);
+        $ownDay  = $session && $player->trainsOn($session->slot);
+        $status  = $player->attendances()->whereDate('attendance_date', $date)->exists() ? 'present'
+            : ($player->absences()->whereDate('attendance_date', $date)->exists() ? 'absent' : '');
+
+        if ($session) {
+            $practice = $session->label . ($ownDay ? '' : ' (not ' . $player->name . "'s day)");
+        } else {
+            $cancelled = PracticeSession::where('session_date', $date)->where('is_cancelled', true)->exists();
+            $practice  = $cancelled ? 'Practice cancelled on this day' : 'No practice on the schedule';
+        }
+
+        return response()->json([
+            'success'  => true,
+            'date'     => $date,
+            'label'    => Carbon::parse($date)->format('l, d M Y'),
+            'future'   => $date > today()->toDateString(),
+            'practice' => $practice,
+            'own'      => $ownDay,
+            'extra'    => $session && !$ownDay,
+            'status'   => $status,
+        ]);
+    }
+
+    /**
+     * Admin only: mark any day up to today by hand from the profile - Present, Absent or Clear
+     * (client, 29 Oct 2026: staff are new to the system, so no practice-day restrictions here).
+     * Whatever was recorded is undone first, so sessions always add up (PlayerSessions::setDay).
+     * Present always uses a session; absent uses one only while the package has sessions left.
+     */
+    public function markDay(Request $request, Player $player)
+    {
+        $v = Validator::make($request->all(), [
+            'date'   => 'required|date|before_or_equal:today',
+            'status' => 'required|in:present,absent,clear',
+        ], [
+            'date.required'        => 'Choose a date.',
+            'date.before_or_equal' => 'Future days cannot be marked.',
+        ]);
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
+        }
+
+        $date    = Carbon::parse($request->input('date'))->toDateString();
+        $status  = $request->input('status');
+        $session = PracticeSession::forDate($date);
+        $ownDay  = $session && $player->trainsOn($session->slot);
+        $day     = Carbon::parse($date)->format('D, d M Y');
+
+        $balance = DB::transaction(fn () => PlayerSessions::setDay($player, $date, $status, $request->user()?->id));
+        $player->sessions_balance = $balance;
+
+        $what = ['present' => 'present' . ($session && !$ownDay ? ' (extra day)' : ''), 'absent' => 'absent', 'clear' => 'cleared'][$status];
+
+        return response()->json([
+            'success' => true,
+            'message' => $day . ' marked ' . $what . '. ' . $balance . ' session(s) left.',
+            'badge'   => (string) $player->balanceBadge(),
         ]);
     }
 
@@ -253,47 +330,62 @@ class PlayerController extends Controller
     /* ---------- helpers ---------- */
 
     /**
-     * A player who paid before the system started and already used some sessions:
-     * the payment is saved on its real date, used sessions are taken off, and each
-     * session date the admin typed in becomes an attendance record (dates are optional).
+     * Payment / earlier sessions section (Add and Edit player):
+     *  now    = plan payment today
+     *  before = plan payment on "Paid on" (optional, default today) + sessions already done
+     *  none   = not paid: only the sessions already done are taken off, so the player shows as payment due
+     *  keep   = (Edit only, default) nothing changes
+     * Each optional session date becomes an attendance row (see PlayerSessions::addEarlierSessions).
      */
-    private function recordEarlierPackage(Player $player, array $plan, Request $request): void
+    private function applyPackage(Player $player, string $mode, array $plan, Request $request, string $nowNote): void
     {
-        $paidOn = $request->input('paid_on') ? Carbon::parse($request->input('paid_on')) : today();
+        $userId = $request->user()?->id;
         $used   = (int) $request->input('used', 0);
-        $dates  = collect((array) $request->input('used_dates', []))->filter()->map(fn ($d) => Carbon::parse($d)->toDateString())
-            ->unique()->sort()->values()->take($used);
+        $dates  = (array) $request->input('used_dates', []);
 
-        [$payment] = Payment::record(
-            $player->id,
-            (float) $plan['fee'],
-            (int) $plan['sessions'],
-            'cash',
-            'Paid before the system started' . ($used ? ' (' . $used . ' session(s) already used)' : ''),
-            $request->user()?->id
-        );
-        $payment->update(['paid_at' => $paidOn->copy()->setTime(12, 0)]);
-
-        foreach ($dates as $date) {
-            DB::table('attendances')->insert([
-                'player_id'       => $player->id,
-                'age_group'       => AgeGroup::forDob($player->dob, $date),
-                'attendance_date' => $date,
-                'method'          => 'manual',
-                'is_extra'        => false,
-                'marked_by'       => $request->user()?->id,
-                'created_at'      => $date . ' 12:00:00',
-            ]);
+        if ($mode === 'now') {
+            Payment::record($player->id, (float) $plan['fee'], (int) $plan['sessions'], 'cash', $nowNote, $userId);
+        } elseif ($mode === 'before') {
+            $paidOn = $request->input('paid_on') ? Carbon::parse($request->input('paid_on')) : today();
+            [$payment] = Payment::record(
+                $player->id,
+                (float) $plan['fee'],
+                (int) $plan['sessions'],
+                'cash',
+                'Paid before the system started' . ($used ? ' (' . $used . ' session(s) already used)' : ''),
+                $userId
+            );
+            $payment->update(['paid_at' => $paidOn->copy()->setTime(12, 0)]);
         }
 
-        if ($used > 0) {
-            DB::table('players')->where('id', $player->id)->decrement('sessions_balance', $used);
+        if (in_array($mode, ['before', 'none'], true) && $used > 0) {
+            PlayerSessions::addEarlierSessions($player, $used, $dates, $userId);
         }
+    }
 
-        $balance = (int) DB::table('players')->where('id', $player->id)->value('sessions_balance');
-        if ($balance <= $player->remindThreshold()) {
-            DB::table('players')->where('id', $player->id)->update(['reminder_pending' => true]);
-        }
+    /** Validation for the payment / earlier sessions section. */
+    private function packageRules(Request $request, array $plan, bool $isEdit): array
+    {
+        // a paid package covers at most its own sessions; unpaid sessions can be any number
+        $maxUsed = $request->input('payment_mode') === 'before' ? (int) $plan['sessions'] : 64;
+
+        return [
+            'payment_mode' => 'nullable|in:' . ($isEdit ? 'keep,' : '') . 'now,before,none',
+            'paid_on'      => 'nullable|date|before_or_equal:today',
+            'used'         => 'nullable|integer|min:0|max:' . $maxUsed,
+            'used_dates'   => 'nullable|array|max:' . $maxUsed,
+            'used_dates.*' => 'nullable|date|before_or_equal:today|distinct',
+        ];
+    }
+
+    private function packageMessages(array $plan): array
+    {
+        return [
+            'used.max'                     => 'This plan has only ' . $plan['sessions'] . ' sessions.',
+            'used_dates.*.distinct'        => 'The same session date is entered twice.',
+            'used_dates.*.before_or_equal' => 'Session dates cannot be in the future.',
+            'paid_on.before_or_equal'      => 'The payment date cannot be in the future.',
+        ];
     }
 
     private function rules(): array

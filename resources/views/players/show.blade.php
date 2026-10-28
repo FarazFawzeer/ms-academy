@@ -86,6 +86,61 @@
             }
         }
 
+        .day-info {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(100, 116, 139, .08);
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+
+        .day-pick {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .day-pick input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .day-pick label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            margin: 0;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+        }
+
+        .day-pick label iconify-icon {
+            font-size: 20px;
+        }
+
+        .day-pick input:checked + label.ok {
+            border-color: #15803d;
+            background: #15803d14;
+            color: #15803d;
+        }
+
+        .day-pick input:checked + label.bad {
+            border-color: #b91c1c;
+            background: #b91c1c14;
+            color: #b91c1c;
+        }
+
+        .day-pick input:focus-visible + label {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+
         .st-pill {
             display: inline-block;
             min-width: 92px;
@@ -205,10 +260,17 @@
             </div>
 
             <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Attendance</h5>
-                    <p class="card-subtitle mb-0">Last 30 practice days. A missed day uses a session too, until the package is
-                        used up.</p>
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                        <h5 class="card-title mb-0">Attendance</h5>
+                        <p class="card-subtitle mb-0">Last 30 practice days. A missed day uses a session too, until the package
+                            is used up.</p>
+                    </div>
+                    @if ($isAdmin)
+                        <button type="button" class="btn btn-sm btn-soft-primary ac-btn btn-mark-day" data-date="">
+                            <iconify-icon icon="solar:calendar-add-outline"></iconify-icon> Mark attendance
+                        </button>
+                    @endif
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -218,7 +280,10 @@
                                     <th>Date</th>
                                     <th>Status</th>
                                     <th class="d-none d-sm-table-cell">Group</th>
-                                    <th>Time</th>
+                                    <th class="d-none d-sm-table-cell">Time</th>
+                                    @if ($isAdmin)
+                                        <th class="text-end">Actions</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -234,7 +299,7 @@
                                                 @unless ($a->present || $a->counted) title="Not counted - the package was already used up" @endunless>{{ $txt }}</span>
                                         </td>
                                         <td class="d-none d-sm-table-cell">{{ $a->group ?? '-' }}</td>
-                                        <td class="text-muted">
+                                        <td class="text-muted d-none d-sm-table-cell">
                                             @if ($a->present)
                                                 {{ $a->time?->format('h:i A') }}
                                                 <small class="d-none d-md-inline">&middot; {{ $a->method === 'qr' ? 'QR scan' : 'Manual' }}</small>
@@ -242,10 +307,20 @@
                                                 -
                                             @endif
                                         </td>
+                                        @if ($isAdmin)
+                                            <td>
+                                                <div class="ac-actions">
+                                                    <button type="button" class="btn btn-sm btn-soft-secondary btn-mark-day"
+                                                        data-date="{{ $a->date->toDateString() }}" title="Change this day">
+                                                        <iconify-icon icon="solar:pen-outline"></iconify-icon><span class="ac-hide-xs">Change</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        @endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-3">No attendance yet.</td>
+                                        <td colspan="{{ $isAdmin ? 5 : 4 }}" class="text-center text-muted py-3">No attendance yet.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -269,6 +344,9 @@
                                     <th>Sessions</th>
                                     <th class="d-none d-sm-table-cell">Method</th>
                                     <th class="d-none d-md-table-cell">Note</th>
+                                    @if ($payments->contains(fn($x) => $x->canBeUndoneBy(auth()->user())))
+                                        <th class="text-end">Actions</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -279,6 +357,18 @@
                                         <td>+{{ $pay->sessions }}</td>
                                         <td class="d-none d-sm-table-cell">{{ $methods[$pay->method] ?? ucfirst($pay->method) }}</td>
                                         <td class="d-none d-md-table-cell text-muted">{{ $pay->note ?? '-' }}</td>
+                                        @if ($payments->contains(fn($x) => $x->canBeUndoneBy(auth()->user())))
+                                            <td>
+                                                <div class="ac-actions">
+                                                    @if ($pay->canBeUndoneBy(auth()->user()))
+                                                        <button type="button" class="btn btn-sm btn-soft-danger btn-undo-pay"
+                                                        data-url="{{ route('admin.payments.undo', $pay) }}" title="Undo this payment (entered by mistake)">
+                                                        <iconify-icon icon="solar:undo-left-round-outline"></iconify-icon><span class="ac-hide-xs">Undo</span>
+                                            </button>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        @endif
                                     </tr>
                                 @empty
                                     <tr>
@@ -293,14 +383,67 @@
         </div>
     </div>
 
+    @if ($isAdmin)
+        {{-- Admin: mark one practice day by hand --}}
+        <div class="modal fade" id="dayModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content" id="dayForm">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title mb-0">Mark attendance</h5>
+                            <small class="text-muted">{{ $player->name }} &middot; {{ $player->days_text }}</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="dayMessage"></div>
+                        <div class="mb-2">
+                            <label class="form-label" for="dayDate">Date</label>
+                            <input type="date" class="form-control" id="dayDate" name="date" max="{{ today()->toDateString() }}"
+                                value="{{ today()->toDateString() }}" required>
+                        </div>
+                        <div class="day-info mb-3" id="dayInfo" aria-live="polite">Choose a date.</div>
+
+                        <label class="form-label d-block">Mark as</label>
+                        <div class="day-pick">
+                            <input type="radio" name="status" id="st_present" value="present">
+                            <label for="st_present" class="ok"><iconify-icon icon="solar:check-circle-outline"></iconify-icon>
+                                <span id="lblPresent">Present</span></label>
+                            <input type="radio" name="status" id="st_absent" value="absent">
+                            <label for="st_absent" class="bad"><iconify-icon icon="solar:close-circle-outline"></iconify-icon>
+                                <span>Absent</span></label>
+                        </div>
+                        <div class="form-text mt-2">Present uses one session. Absent uses one only while sessions are left.
+                            Changing a day puts its session back first.</div>
+                        <button type="button" class="btn btn-link btn-sm text-danger px-0 mt-1 d-none" id="dayClear">
+                            Clear this day (no record)</button>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     @include('players._payment-modal')
 
     <script>
-        // new payment -> reload so the payment table and balance are both fresh
-        document.addEventListener('payment:saved', function() {
+        // new payment: refresh once the "Undo" chance in the message is over; after an undo straight away
+        document.addEventListener('payment:settled', function() {
+            location.reload();
+        });
+        document.addEventListener('payment:undone', function() {
             setTimeout(function() {
                 location.reload();
-            }, 900);
+            }, 700);
+        });
+
+        document.querySelectorAll('.btn-undo-pay').forEach(function(b) {
+            b.addEventListener('click', function() {
+                undoPayment(b.dataset.url);
+            });
         });
 
         document.getElementById('toggleBtn').addEventListener('click', function() {
@@ -320,6 +463,112 @@
         });
 
         @if ($isAdmin)
+            (function() {
+                var modalEl = document.getElementById('dayModal');
+                var form = document.getElementById('dayForm');
+                var input = document.getElementById('dayDate');
+                var msg = document.getElementById('dayMessage');
+                var info = document.getElementById('dayInfo');
+                var clearBtn = document.getElementById('dayClear');
+                var today = "{{ today()->toDateString() }}";
+                var infoUrl = "{{ route('admin.players.day-info', $player) }}";
+                var saveUrl = "{{ route('admin.players.day', $player) }}";
+                var seq = 0;
+
+                // what is recorded on the chosen date (practice, their day or not, present / absent)
+                async function load() {
+                    var date = input.value;
+                    clearBtn.classList.add('d-none');
+                    form.querySelectorAll('input[name=status]').forEach(function(r) {
+                        r.checked = false;
+                    });
+                    document.getElementById('lblPresent').textContent = 'Present';
+                    if (!date) {
+                        info.textContent = 'Choose a date.';
+                        return;
+                    }
+                    var mine = ++seq;
+                    info.textContent = 'Checking...';
+                    var d = await AC.call(infoUrl + '?date=' + encodeURIComponent(date), {
+                        method: 'GET'
+                    });
+                    if (mine !== seq) return;
+                    if (!d.success) {
+                        info.textContent = d.message || 'Could not check this date.';
+                        return;
+                    }
+                    var st = d.status === 'present' ? '<span class="text-success fw-semibold">Present</span>' :
+                        d.status === 'absent' ? '<span class="text-danger fw-semibold">Absent</span>' :
+                        '<span class="text-muted">Not marked</span>';
+                    info.innerHTML = '<strong>' + AC.esc(d.label) + '</strong><br>' + AC.esc(d.practice) + ' &middot; ' + st +
+                        (d.future ? '<br><span class="text-danger">Future days cannot be marked.</span>' : '');
+                    if (d.extra) document.getElementById('lblPresent').textContent = 'Present (extra day)';
+                    if (d.status) {
+                        document.getElementById(d.status === 'present' ? 'st_present' : 'st_absent').checked = true;
+                        clearBtn.classList.remove('d-none');
+                    }
+                }
+                input.addEventListener('change', load);
+
+                document.querySelectorAll('.btn-mark-day').forEach(function(b) {
+                    b.addEventListener('click', function() {
+                        msg.innerHTML = '';
+                        var date = b.dataset.date || today;
+                        if (window.ACDate) ACDate.set(input, date, {
+                            max: today
+                        });
+                        else input.value = date;
+                        load();
+                        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                    });
+                });
+
+                async function save(status) {
+                    if (!input.value) {
+                        msg.innerHTML = '<div class="alert alert-warning">Choose a date.</div>';
+                        return;
+                    }
+                    if (input.value > today) {
+                        msg.innerHTML = '<div class="alert alert-warning">Future days cannot be marked.</div>';
+                        return;
+                    }
+                    var btn = form.querySelector('[type=submit]');
+                    btn.disabled = true;
+                    var d = await AC.call(saveUrl, {
+                        body: {
+                            date: input.value,
+                            status: status
+                        }
+                    });
+                    btn.disabled = false;
+                    if (d.success) {
+                        AC.toast(d.message);
+                        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                        setTimeout(function() {
+                            location.reload();
+                        }, 800);
+                    } else {
+                        msg.innerHTML = '<div class="alert alert-danger">' + AC.errors(d) + '</div>';
+                    }
+                }
+
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var st = form.querySelector('input[name=status]:checked');
+                    if (!st) {
+                        msg.innerHTML = '<div class="alert alert-warning">Choose Present or Absent.</div>';
+                        return;
+                    }
+                    save(st.value);
+                });
+
+                clearBtn.addEventListener('click', async function() {
+                    if (await AC.ask('Clear this day?', 'The record for this day is removed and its session is given back.', 'Yes, clear')) {
+                        save('clear');
+                    }
+                });
+            })();
+
             document.getElementById('deleteBtn').addEventListener('click', function() {
                 deletePlayer({{ $player->id }}, @js($player->name), function() {
                     window.location = "{{ route('admin.players.index') }}";

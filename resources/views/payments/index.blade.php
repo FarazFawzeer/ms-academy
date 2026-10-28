@@ -6,6 +6,8 @@
 
     @php
         $isAdmin = in_array(auth()->user()->type, ['Super Admin', 'Admin']);
+        // Actions column only when this user may undo at least one payment on the page
+        $canUndoAny = $payments->contains(fn($x) => $x->canBeUndoneBy(auth()->user()));
         $today = now()->toDateString();
         $monthStart = now()->startOfMonth()->toDateString();
         $methodColors = ['cash' => '#15803d', 'card' => '#1d4ed8', 'bank' => '#6d28d9', 'online' => '#0e7490', 'extra' => '#b45309'];
@@ -191,7 +193,7 @@
                             <th>Amount (LKR)</th>
                             <th class="d-none d-sm-table-cell">Sessions</th>
                             <th class="d-none d-md-table-cell">Method</th>
-                            @if ($isAdmin)
+                            @if ($canUndoAny)
                                 <th class="text-end">Actions</th>
                             @endif
                         </tr>
@@ -214,20 +216,22 @@
                                     <span class="pay-badge"
                                         style="background:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}1a;color:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}">{{ $p->method === 'extra' ? 'Extra days' : ucfirst($p->method) }}</span>
                                 </td>
-                                @if ($isAdmin)
+                                @if ($canUndoAny)
                                     <td>
                                         <div class="ac-actions">
-                                            <button type="button" class="btn btn-sm btn-soft-danger btn-del" data-id="{{ $p->id }}"
-                                                title="Remove a payment entered by mistake">
-                                                <iconify-icon icon="solar:trash-bin-trash-outline"></iconify-icon><span class="ac-hide-xs">Delete</span>
-                                            </button>
+                                            @if ($p->canBeUndoneBy(auth()->user()))
+                                                <button type="button" class="btn btn-sm btn-soft-danger btn-undo-pay"
+                                                    data-url="{{ route('admin.payments.undo', $p) }}" title="Undo this payment (entered by mistake)">
+                                                    <iconify-icon icon="solar:undo-left-round-outline"></iconify-icon><span class="ac-hide-xs">Undo</span>
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isAdmin ? 6 : 5 }}" class="text-center text-muted py-4">No payments in this
+                                <td colspan="{{ $canUndoAny ? 6 : 5 }}" class="text-center text-muted py-4">No payments in this
                                     period.</td>
                             </tr>
                         @endforelse
@@ -241,26 +245,18 @@
         </div>
     </div>
 
-    @if ($isAdmin)
-        <script>
-            var delTpl = "{{ route('admin.payments.destroy', ['payment' => '__ID__']) }}";
-            document.querySelectorAll('.btn-del').forEach(function(b) {
-                b.addEventListener('click', function() {
-                    AC.act(delTpl.replace('__ID__', b.dataset.id), {
-                        method: 'DELETE',
-                        confirm: {
-                            title: 'Remove this payment?',
-                            text: 'The sessions it added will be taken back from the player.',
-                            button: 'Yes, remove'
-                        },
-                        onSuccess: function() {
-                            setTimeout(function() {
-                                location.reload();
-                            }, 700);
-                        }
-                    });
+    <script>
+        // Undo a payment entered by mistake (Admin: any; Front Desk: their own from today)
+        document.querySelectorAll('.btn-undo-pay').forEach(function(b) {
+            b.addEventListener('click', function() {
+                undoPayment(b.dataset.url, {
+                    done: function() {
+                        setTimeout(function() {
+                            location.reload();
+                        }, 700);
+                    }
                 });
             });
-        </script>
-    @endif
+        });
+    </script>
 @endsection

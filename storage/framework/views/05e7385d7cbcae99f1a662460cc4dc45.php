@@ -3,6 +3,242 @@
     <?php echo $__env->make('partials.js-helpers', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <style>
+        /* ---------- calendar ---------- */
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cal-title {
+            min-width: 130px;
+            text-align: center;
+        }
+
+        .cal-quick {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cal-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .cal-legend i {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            margin-right: 5px;
+            vertical-align: -1px;
+        }
+
+        .cal-legend i.sel {
+            border: 2px solid #0f766e;
+            background: rgba(15, 118, 110, .12);
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .cal-wd {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            padding: 4px 0;
+        }
+
+        .cal-day {
+            position: relative;
+            min-height: 84px;
+            padding: 6px;
+            border: 1.5px solid rgba(100, 116, 139, .18);
+            border-radius: 10px;
+            background: var(--bs-card-bg, #fff);
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            transition: border-color .12s ease, background .12s ease;
+        }
+
+        .cal-day:hover {
+            border-color: rgba(15, 118, 110, .5);
+        }
+
+        .cal-day.out {
+            background: transparent;
+            border-style: dashed;
+            opacity: .35;
+            cursor: default;
+        }
+
+        .cal-day.past {
+            background: rgba(100, 116, 139, .05);
+        }
+
+        .cal-day.past .n {
+            color: #94a3b8;
+        }
+
+        .cal-day.today {
+            box-shadow: inset 0 0 0 2px rgba(15, 118, 110, .35);
+        }
+
+        .cal-day .n {
+            font-weight: 600;
+            font-size: 13px;
+            color: #334155;
+        }
+
+        .cal-day .chip {
+            display: flex;
+            flex-direction: column;
+            border-radius: 6px;
+            padding: 3px 6px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.25;
+            background: color-mix(in srgb, var(--c) 12%, transparent);
+            color: var(--c);
+        }
+
+        .cal-day .chip .t {
+            font-weight: 500;
+            opacity: .85;
+        }
+
+        .cal-day .chip.off {
+            background: rgba(148, 163, 184, .18);
+            color: #64748b;
+            text-decoration: line-through;
+        }
+
+        .cal-day .cnt {
+            font-size: 10.5px;
+            color: #64748b;
+        }
+
+        .cal-day .tick {
+            position: absolute;
+            top: 4px;
+            right: 5px;
+            color: #0f766e;
+            font-size: 18px;
+            display: none;
+        }
+
+        .cal-day.sel {
+            border-color: #0f766e;
+            background: rgba(15, 118, 110, .08);
+        }
+
+        .cal-day.sel .tick {
+            display: block;
+        }
+
+        .cal-bar {
+            position: sticky;
+            bottom: 10px;
+            z-index: 3;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(15, 118, 110, .35);
+            background: var(--bs-card-bg, #fff);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .12);
+        }
+
+        .cal-sel {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .grp-pick {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .grp-pick input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .grp-pick label {
+            margin: 0;
+            padding: 7px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+        }
+
+        .grp-pick input:checked + label {
+            border-color: var(--c);
+            background: color-mix(in srgb, var(--c) 10%, transparent);
+            color: var(--c);
+        }
+
+        .grp-pick input:focus-visible + label {
+            outline: 2px solid var(--c);
+            outline-offset: 2px;
+        }
+
+        /* phones: compact cells, colour bar instead of text */
+        @media (max-width: 575.98px) {
+            .cal-grid {
+                gap: 3px;
+            }
+
+            .cal-day {
+                min-height: 54px;
+                padding: 4px 3px;
+                border-radius: 8px;
+            }
+
+            .cal-day .chip {
+                padding: 0;
+                height: 6px;
+                border-radius: 3px;
+                background: var(--c);
+            }
+
+            .cal-day .chip.off {
+                background: #94a3b8;
+            }
+
+            .cal-day .chip .full,
+            .cal-day .chip .t,
+            .cal-day .cnt {
+                display: none;
+            }
+
+            .cal-day .tick {
+                font-size: 14px;
+                top: 2px;
+                right: 2px;
+            }
+
+            .cal-title {
+                min-width: 100px;
+            }
+        }
+
         .sc-tabs .nav-link {
             font-weight: 600;
         }
@@ -116,48 +352,12 @@
             white-space: nowrap;
         }
 
-        /* Action icons: no background, colour only */
-        .act-ico {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            font-size: 22px;
-            line-height: 1;
-            background: transparent;
-            border: 0;
-            padding: 0;
-            cursor: pointer;
-            text-decoration: none;
-            transition: transform .12s ease, opacity .12s ease;
-        }
 
-        .act-ico:hover {
-            transform: scale(1.2);
-            opacity: .85;
-        }
 
-        .act-edit {
-            color: #f59e0b;
-        }
 
-        .act-del {
-            color: #dc2626;
-        }
 
-        .act-restore {
-            color: #16a34a;
-        }
 
-        .act-lock {
-            color: #94a3b8;
-            cursor: default;
-        }
 
-        .act-lock:hover {
-            transform: none;
-        }
 
         @media (max-width: 575.98px) {
             .sc-row {
@@ -182,19 +382,148 @@
         }
     </style>
 
+    <?php
+        $groupColor = ['fri' => '#2563eb', 'sun' => '#0f766e', 'all' => '#b45309'];
+        $groupShort = ['fri' => 'Fri players', 'sun' => 'Sun players', 'all' => 'All players'];
+        $todayKey = today()->toDateString();
+        $prevMonth = $month->copy()->subMonth()->format('Y-m');
+        $nextMonth = $month->copy()->addMonth()->format('Y-m');
+    ?>
+
+    
+    <div class="card" id="calCard">
+        <div class="card-header">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Practice Calendar</h5>
+                    <p class="card-subtitle mb-0">Tap the days, choose who the practice is for, then press <strong>Add
+                            practice</strong> once. Tap existing days to cancel or remove them.</p>
+                </div>
+                <div class="cal-nav">
+                    <a href="<?php echo e(route('admin.schedule.index', ['month' => $prevMonth, 'view' => $view])); ?>" class="btn btn-light btn-sm"
+                        aria-label="Previous month"><iconify-icon icon="solar:alt-arrow-left-outline"></iconify-icon></a>
+                    <strong class="cal-title"><?php echo e($month->format('F Y')); ?></strong>
+                    <a href="<?php echo e(route('admin.schedule.index', ['month' => $nextMonth, 'view' => $view])); ?>" class="btn btn-light btn-sm"
+                        aria-label="Next month"><iconify-icon icon="solar:alt-arrow-right-outline"></iconify-icon></a>
+                </div>
+            </div>
+            <div class="cal-quick mt-3">
+                <span class="text-muted small me-1">Quick select:</span>
+                <button type="button" class="btn btn-sm btn-soft-primary" data-pick-weekday="5">All Fridays</button>
+                <button type="button" class="btn btn-sm btn-soft-primary" data-pick-weekday="0">All Sundays</button>
+                <button type="button" class="btn btn-sm btn-soft-secondary" data-pick-weekday="56">Fridays + Sundays</button>
+                <button type="button" class="btn btn-sm btn-light" id="calClear">Clear</button>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="cal-legend mb-2">
+                <?php $__currentLoopData = $groups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <span><i style="background: <?php echo e($groupColor[$key] ?? '#475569'); ?>"></i><?php echo e($label); ?></span>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                <span><i style="background:#94a3b8"></i>Cancelled</span>
+                <span><i class="sel"></i>Selected</span>
+            </div>
+
+            <div class="cal-grid" id="calGrid">
+                <?php $__currentLoopData = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $wd): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <div class="cal-wd"><?php echo e($wd); ?></div>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+
+                <?php for($d = $gridFrom->copy(); $d->lte($gridTo); $d->addDay()): ?>
+                    <?php
+                        $key = $d->toDateString();
+                        $daySessions = $inGrid[$key] ?? collect();
+                        $act = $daySessions->firstWhere('is_cancelled', false);
+                        $can = $daySessions->firstWhere('is_cancelled', true);
+                        $state = $act ? 'active' : ($can ? 'cancelled' : 'none');
+                        $inMonth = $d->month === $month->month;
+                        $cnt = $marked[$key] ?? 0;
+                    ?>
+                    <?php if(!$inMonth): ?>
+                        <div class="cal-day out" aria-hidden="true"><span class="n"><?php echo e($d->day); ?></span></div>
+                    <?php else: ?>
+                        <button type="button" class="cal-day <?php echo e($key < $todayKey ? 'past' : ''); ?> <?php echo e($key === $todayKey ? 'today' : ''); ?> st-<?php echo e($state); ?>"
+                            data-date="<?php echo e($key); ?>" data-weekday="<?php echo e($d->dayOfWeek); ?>" data-state="<?php echo e($state); ?>"
+                            data-past="<?php echo e($key < $todayKey ? 1 : 0); ?>" data-marked="<?php echo e($cnt); ?>"
+                            aria-pressed="false" aria-label="<?php echo e($d->format('l d F')); ?><?php echo e($act ? ', ' . $act->label : ($can ? ', cancelled' : '')); ?>">
+                            <span class="n"><?php echo e($d->day); ?></span>
+                            <?php if($act): ?>
+                                <span class="chip" style="--c: <?php echo e($groupColor[$act->slot] ?? '#475569'); ?>">
+                                    <span class="full"><?php echo e($groupShort[$act->slot] ?? $act->slot); ?></span>
+                                    <span class="t"><?php echo e($act->start_time ? \Carbon\Carbon::parse($act->start_time)->format('g:i') : ''); ?></span>
+                                </span>
+                                <?php if($cnt): ?>
+                                    <span class="cnt"><?php echo e($cnt); ?> marked</span>
+                                <?php endif; ?>
+                            <?php elseif($can): ?>
+                                <span class="chip off"><span class="full">Cancelled</span></span>
+                            <?php endif; ?>
+                            <span class="tick"><iconify-icon icon="solar:check-circle-bold"></iconify-icon></span>
+                        </button>
+                    <?php endif; ?>
+                <?php endfor; ?>
+            </div>
+
+            
+            <div class="cal-bar d-none" id="calBar">
+                <div class="cal-sel"><strong id="calCount">0</strong> day(s) selected <span class="text-muted" id="calList"></span></div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label small mb-1">Practice for</label>
+                        <div class="grp-pick">
+                            <input type="radio" name="calSlot" id="cs_auto" value="auto"
+                                data-start="<?php echo e(\App\Models\PracticeSession::defaultTimes('fri')[0]); ?>"
+                                data-end="<?php echo e(\App\Models\PracticeSession::defaultTimes('fri')[1]); ?>">
+                            <label for="cs_auto" style="--c: #334155" title="Fridays for Friday players, Sundays for Sunday players">By day
+                                (Fri / Sun players)</label>
+                            <?php $__currentLoopData = $groups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <input type="radio" name="calSlot" id="cs_<?php echo e($key); ?>" value="<?php echo e($key); ?>" <?php echo e($loop->last ? 'checked' : ''); ?>
+
+                                    data-start="<?php echo e(\App\Models\PracticeSession::defaultTimes($key)[0]); ?>"
+                                    data-end="<?php echo e(\App\Models\PracticeSession::defaultTimes($key)[1]); ?>">
+                                <label for="cs_<?php echo e($key); ?>" style="--c: <?php echo e($groupColor[$key] ?? '#475569'); ?>"><?php echo e($label); ?></label>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-1" for="calStart">Start</label>
+                        <input type="time" class="form-control" id="calStart" value="16:00">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-1" for="calEnd">End</label>
+                        <input type="time" class="form-control" id="calEnd" value="17:30">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small mb-1" for="calNote">Note <span class="text-muted">(optional)</span></label>
+                        <input type="text" class="form-control" id="calNote" maxlength="150" placeholder="Ex: Main ground">
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="button" class="btn btn-primary ac-btn" data-bulk="add">
+                        <iconify-icon icon="solar:add-circle-outline"></iconify-icon> Add practice
+                    </button>
+                    <button type="button" class="btn btn-soft-warning ac-btn" data-bulk="cancel">
+                        <iconify-icon icon="solar:close-circle-outline"></iconify-icon> Cancel days
+                    </button>
+                    <button type="button" class="btn btn-soft-success ac-btn" data-bulk="restore">
+                        <iconify-icon icon="solar:restart-outline"></iconify-icon> Put back
+                    </button>
+                    <button type="button" class="btn btn-soft-danger ac-btn" data-bulk="remove">
+                        <iconify-icon icon="solar:trash-bin-trash-outline"></iconify-icon> Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                 <div>
                     <h5 class="card-title mb-0">Practice Days</h5>
-                    <p class="card-subtitle mb-0">
-                        Regular:
-                        <?php $__currentLoopData = $slots; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <?php echo e($s['label']); ?> <?php echo e(\Carbon\Carbon::parse($s['start'])->format('g:i')); ?>-<?php echo e(\Carbon\Carbon::parse($s['end'])->format('g:i A')); ?><?php echo e($loop->last ? '.' : ','); ?>
-
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                        These are added automatically. Move, re-time or cancel any single day.
-                    </p>
+                    <p class="card-subtitle mb-0">Every practice day in a list. Change the date or time of a single day,
+                        cancel it or put it back.</p>
                 </div>
                 <button type="button" class="btn btn-primary" id="btnAdd">
                     <iconify-icon icon="solar:add-circle-outline" class="me-1"></iconify-icon> Add Practice
@@ -219,7 +548,7 @@
                     $isToday = $s->session_date->isToday();
                     $isPast = $s->session_date->lt(today());
                     $locked = $count > 0;
-                    $isAdded = !$s->is_moved && $s->planned_date->dayOfWeek !== (int) ($slots[$s->slot]['weekday'] ?? -1);
+                    $isAdded = false; // every day is picked by the admin now
                 ?>
 
                 <?php if($s->session_date->format('Y-m') !== $lastMonth): ?>
@@ -268,27 +597,26 @@
                         <?php endif; ?>
                     </div>
 
-                    <div class="sc-act">
+                    <div class="sc-act ac-actions">
                         <?php if($locked): ?>
-                            <span class="act-ico act-lock" title="Players already marked - date is locked">
-                                <iconify-icon icon="solar:lock-keyhole-minimalistic-bold-duotone"></iconify-icon></span>
+                            <span class="text-muted d-inline-flex align-items-center" title="Players already marked - the date is locked">
+                                <iconify-icon icon="solar:lock-keyhole-minimalistic-outline" class="fs-18"></iconify-icon></span>
                         <?php endif; ?>
-                        <button type="button" class="act-ico act-edit btn-edit" title="Move / change time"
+                        <button type="button" class="btn btn-sm btn-soft-primary btn-edit"
                             data-id="<?php echo e($s->id); ?>" data-date="<?php echo e($key); ?>"
                             data-start="<?php echo e($s->start_time ? substr($s->start_time, 0, 5) : ''); ?>"
                             data-end="<?php echo e($s->end_time ? substr($s->end_time, 0, 5) : ''); ?>" data-note="<?php echo e($s->note); ?>"
                             data-label="<?php echo e($s->label); ?>" data-locked="<?php echo e($locked ? 1 : 0); ?>">
-                            <iconify-icon icon="solar:pen-bold-duotone"></iconify-icon>
+                            <iconify-icon icon="solar:pen-outline"></iconify-icon><span><?php echo e($locked ? 'Time' : 'Change'); ?></span>
                         </button>
                         <?php if($s->is_cancelled): ?>
-                            <button type="button" class="act-ico act-restore btn-restore" title="Put back on"
-                                data-id="<?php echo e($s->id); ?>">
-                                <iconify-icon icon="solar:restart-circle-bold-duotone"></iconify-icon>
+                            <button type="button" class="btn btn-sm btn-soft-success btn-restore" data-id="<?php echo e($s->id); ?>">
+                                <iconify-icon icon="solar:restart-outline"></iconify-icon><span>Put back</span>
                             </button>
                         <?php elseif(!$locked): ?>
-                            <button type="button" class="act-ico act-del btn-cancel" title="Cancel this practice"
-                                data-id="<?php echo e($s->id); ?>" data-when="<?php echo e($s->session_date->format('l d M')); ?>">
-                                <iconify-icon icon="solar:close-circle-bold-duotone"></iconify-icon>
+                            <button type="button" class="btn btn-sm btn-soft-danger btn-cancel" data-id="<?php echo e($s->id); ?>"
+                                data-when="<?php echo e($s->session_date->format('l d M')); ?>">
+                                <iconify-icon icon="solar:close-circle-outline"></iconify-icon><span>Cancel</span>
                             </button>
                         <?php endif; ?>
                     </div>
@@ -312,15 +640,14 @@
                     <div id="psMessage"></div>
 
                     <div class="mb-3" id="slotWrap">
-                        <label class="form-label">For players who train on</label>
+                        <label class="form-label">Practice for</label>
                         <select name="slot" id="psSlot" class="form-select">
-                            <?php $__currentLoopData = $slots; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <option value="<?php echo e($key); ?>" data-start="<?php echo e($s['start']); ?>" data-end="<?php echo e($s['end']); ?>">
-                                    <?php echo e($s['label']); ?></option>
+                            <?php $__currentLoopData = $groups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($key); ?>" data-start="<?php echo e(\App\Models\PracticeSession::defaultTimes($key)[0]); ?>"
+                                    data-end="<?php echo e(\App\Models\PracticeSession::defaultTimes($key)[1]); ?>"><?php echo e($label); ?></option>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
-                        <div class="form-text">Example: Sunday is off, so add a Saturday practice for the Sunday players.
-                        </div>
+                        <div class="form-text">To add many days at once, use the calendar above.</div>
                     </div>
 
                     <div class="mb-3">
@@ -380,10 +707,11 @@
                 msg.innerHTML = '';
                 document.getElementById('slotWrap').classList.toggle('d-none', !isNew);
                 f.slot.disabled = !isNew;
-                f.date.value = v.date || '';
-                f.date.min = isNew || v.locked !== '1' ? today : '';
                 // a locked date is sent unchanged (readonly, not disabled, so it is still posted)
-                f.date.readOnly = v.locked === '1';
+                ACDate.set(f.date, v.date || null, {
+                    min: isNew || v.locked !== '1' ? today : null,
+                    locked: v.locked === '1'
+                });
                 document.getElementById('psLockHint').classList.toggle('d-none', v.locked !== '1');
                 f.start.value = v.start || '';
                 f.end.value = v.end || '';
@@ -461,6 +789,169 @@
                     }, 600);
                 }
             });
+        })();
+    </script>
+    <script>
+        // Practice calendar: tap days to select, then one action for all of them
+        (function() {
+            var bulkUrl = "<?php echo e(route('admin.schedule.bulk')); ?>";
+            var grid = document.getElementById('calGrid');
+            var bar = document.getElementById('calBar');
+            var picked = new Set();
+            var days = Array.prototype.slice.call(grid.querySelectorAll('.cal-day[data-date]'));
+            var fmt = function(d) {
+                var dt = new Date(d + 'T00:00:00');
+                return dt.toLocaleDateString('en-GB', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short'
+                });
+            };
+
+            function el(date) {
+                return grid.querySelector('.cal-day[data-date="' + date + '"]');
+            }
+
+            function refresh() {
+                days.forEach(function(d) {
+                    var on = picked.has(d.dataset.date);
+                    d.classList.toggle('sel', on);
+                    d.setAttribute('aria-pressed', on ? 'true' : 'false');
+                });
+                var list = Array.from(picked).sort();
+                bar.classList.toggle('d-none', list.length === 0);
+                document.getElementById('calCount').textContent = list.length;
+                document.getElementById('calList').textContent = list.length ?
+                    '(' + list.slice(0, 6).map(fmt).join(', ') + (list.length > 6 ? ', ...' : '') + ')' : '';
+
+                // which actions make sense for this selection
+                var st = list.map(function(d) {
+                    return el(d).dataset;
+                });
+                var has = function(f) {
+                    return st.some(f);
+                };
+                setOn('add', has(function(x) {
+                    return x.state !== 'active' && x.past === '0';
+                }));
+                setOn('cancel', has(function(x) {
+                    return x.state === 'active' && x.marked === '0';
+                }));
+                setOn('restore', has(function(x) {
+                    return x.state === 'cancelled';
+                }));
+                setOn('remove', has(function(x) {
+                    return x.state !== 'none' && x.past === '0' && x.marked === '0';
+                }));
+
+                // suggest the group from the days picked (all Fridays -> Friday players, etc.)
+                if (list.length) {
+                    var wds = st.map(function(x) {
+                        return x.weekday;
+                    });
+                    var allFri = wds.every(function(w) {
+                        return w === '5';
+                    });
+                    var allSun = wds.every(function(w) {
+                        return w === '0';
+                    });
+                    var friSun = wds.every(function(w) {
+                        return w === '5' || w === '0';
+                    });
+                    // Fridays + Sundays together: each day for its own players
+                    var slot = allFri ? 'fri' : (allSun ? 'sun' : (friSun ? 'auto' : 'all'));
+                    var r = document.getElementById('cs_' + slot);
+                    if (r && !bar.dataset.touched) {
+                        r.checked = true;
+                        setTimes(r);
+                    }
+                }
+            }
+
+            function setOn(action, on) {
+                var b = bar.querySelector('[data-bulk="' + action + '"]');
+                b.disabled = !on;
+                b.classList.toggle('d-none', !on && action !== 'add');
+            }
+
+            function setTimes(r) {
+                document.getElementById('calStart').value = r.dataset.start;
+                document.getElementById('calEnd').value = r.dataset.end;
+            }
+
+            grid.addEventListener('click', function(e) {
+                var d = e.target.closest('.cal-day[data-date]');
+                if (!d) return;
+                var k = d.dataset.date;
+                picked.has(k) ? picked.delete(k) : picked.add(k);
+                refresh();
+            });
+
+            // quick select: all Fridays / Sundays of this month from today on (56 = both)
+            document.querySelectorAll('[data-pick-weekday]').forEach(function(b) {
+                b.addEventListener('click', function() {
+                    var want = b.dataset.pickWeekday === '56' ? ['5', '0'] : [b.dataset.pickWeekday];
+                    days.forEach(function(d) {
+                        if (want.indexOf(d.dataset.weekday) !== -1 && d.dataset.past === '0') picked.add(d.dataset.date);
+                    });
+                    delete bar.dataset.touched;
+                    refresh();
+                });
+            });
+            document.getElementById('calClear').addEventListener('click', function() {
+                picked.clear();
+                delete bar.dataset.touched;
+                refresh();
+            });
+
+            document.querySelectorAll('input[name=calSlot]').forEach(function(r) {
+                r.addEventListener('change', function() {
+                    bar.dataset.touched = '1';
+                    setTimes(r);
+                });
+            });
+
+            bar.querySelectorAll('[data-bulk]').forEach(function(b) {
+                b.addEventListener('click', async function() {
+                    var action = b.dataset.bulk;
+                    var dates = Array.from(picked).sort();
+                    if (!dates.length) return;
+
+                    var ask = {
+                        cancel: ['Cancel ' + dates.length + ' day(s)?', 'They stay on the calendar as "Cancelled" (no practice, no absences).', 'Yes, cancel'],
+                        remove: ['Remove ' + dates.length + ' day(s)?', 'Use this for days added by mistake. They disappear from the calendar.', 'Yes, remove']
+                    } [action];
+                    if (ask && !(await AC.ask(ask[0], ask[1], ask[2]))) return;
+
+                    var slot = (document.querySelector('input[name=calSlot]:checked') || {}).value;
+                    b.disabled = true;
+                    var d = await AC.call(bulkUrl, {
+                        body: {
+                            action: action,
+                            dates: dates,
+                            slot: slot,
+                            start_time: document.getElementById('calStart').value,
+                            end_time: document.getElementById('calEnd').value,
+                            note: document.getElementById('calNote').value
+                        }
+                    });
+                    b.disabled = false;
+                    if (d.success) {
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Done',
+                            text: d.message,
+                            timer: d.message.indexOf('Skipped') === -1 ? 1600 : undefined,
+                            showConfirmButton: d.message.indexOf('Skipped') !== -1
+                        });
+                        location.reload();
+                    } else {
+                        Swal.fire('Nothing changed', d.message || 'Something went wrong.', 'warning');
+                    }
+                });
+            });
+
+            refresh();
         })();
     </script>
 <?php $__env->stopSection(); ?>

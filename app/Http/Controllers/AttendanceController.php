@@ -303,10 +303,13 @@ class AttendanceController extends Controller
             ];
         }
         $extraDates = [];
-        foreach ($marks as $byDate) {
-            foreach (array_keys($byDate) as $date) {
-                if (!isset($activeDates[$date])) {
-                    $extraDates[$date] = true;
+        // (absences too: the admin can mark any day absent from the profile)
+        foreach ([$marks, $absent] as $list) {
+            foreach ($list as $byDate) {
+                foreach (array_keys($byDate) as $date) {
+                    if (!isset($activeDates[$date])) {
+                        $extraDates[$date] = true;
+                    }
                 }
             }
         }
@@ -337,6 +340,10 @@ class AttendanceController extends Controller
                         $expected++;
                         $hit++;
                     }
+                } elseif (isset($absent[$p->id][$c['key']])) {
+                    // recorded absence (also one marked by hand on another day)
+                    $cell = $absent[$p->id][$c['key']] ? 'A' : 'U';
+                    $expected++;
                 } elseif ($c['type'] === 'cancelled') {
                     $cell = 'X';
                 } elseif ($c['type'] === 'extra' || !$p->trainsOn($c['slot'])

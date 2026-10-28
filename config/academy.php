@@ -49,6 +49,14 @@ return [
         'sun' => ['label' => 'Sunday', 'short' => 'Sun', 'weekday' => 0, 'start' => '16:00', 'end' => '17:30'],
     ],
 
+    /*
+    | Practice days are picked by the admin on the Practice Schedule calendar (client, 29 Oct 2026).
+    | A day is for Friday players, Sunday players or all players ('all').
+    | true = old behaviour: every Friday and Sunday is created automatically.
+    */
+    'auto_schedule' => env('ACADEMY_AUTO_SCHEDULE', false),
+    'all_players_label' => 'All players',
+
     // No sessions are created before this date (the day the academy started using the system)
     'schedule_start' => env('ACADEMY_SCHEDULE_START', '2026-10-01'),
 

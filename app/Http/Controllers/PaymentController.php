@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Player;
+use App\Support\PlayerSessions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -39,7 +40,7 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
         }
 
-        [, $balance] = Payment::record(
+        [$payment, $balance] = Payment::record(
             $player->id,
             (float) $request->input('amount'),
             (int) $request->input('sessions'),
@@ -51,10 +52,11 @@ class PaymentController extends Controller
         $player->sessions_balance = $balance;
 
         return response()->json([
-            'success' => true,
-            'message' => 'Payment received. ' . $player->name . ' now has ' . $balance . ' session(s).',
-            'balance' => $balance,
-            'badge'   => (string) $player->balanceBadge(),
+            'success'  => true,
+            'message'  => 'Payment received. ' . $player->name . ' now has ' . $balance . ' session(s).',
+            'balance'  => $balance,
+            'badge'    => (string) $player->balanceBadge(),
+            'undo_url' => route('admin.payments.undo', $payment),
         ]);
     }
 
@@ -96,13 +98,50 @@ class PaymentController extends Controller
         ]);
     }
 
+    /** Undo a payment entered by mistake (Admin: any; others: their own, same day). */
+    public function undo(Request $request, Payment $payment)
+    {
+        if (!$payment->canBeUndoneBy($request->user())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only an Admin can undo this payment (it was recorded by someone else or on an earlier day).',
+            ], 403);
+        }
+
+        return $this->reverse($payment);
+    }
+
+    /** Admin only (older route, same result as undo). */
     public function destroy(Payment $payment)
     {
-        DB::transaction(function () use ($payment) {
+        return $this->reverse($payment);
+    }
+
+    /** Remove the payment and take its sessions back off; the renewal reminder follows the new balance. */
+    private function reverse(Payment $payment)
+    {
+        $player = Player::find($payment->player_id);
+        $what   = $payment->method === 'extra'
+            ? $payment->sessions . ' extra day(s)'
+            : 'Payment of LKR ' . number_format((float) $payment->amount);
+
+        $balance = DB::transaction(function () use ($payment, $player) {
             Player::whereKey($payment->player_id)->decrement('sessions_balance', $payment->sessions);
             $payment->delete();
+
+            return $player ? PlayerSessions::refreshReminder($player, true) : 0;
         });
 
-        return response()->json(['success' => true, 'message' => 'Payment removed and sessions deducted.']);
+        if ($player) {
+            $player->sessions_balance = $balance;
+        }
+
+        return response()->json([
+            'success'   => true,
+            'message'   => $what . ' undone.' . ($player ? ' ' . $player->name . ' now has ' . $balance . ' session(s).' : ''),
+            'player_id' => $payment->player_id,
+            'balance'   => $balance,
+            'badge'     => $player ? (string) $player->balanceBadge() : '',
+        ]);
     }
 }

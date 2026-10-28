@@ -138,6 +138,30 @@
                 }
             }
 
+            // Undo a payment entered by mistake. opts.confirm=false skips the question (already clicked "Undo").
+            // Updates every sessions badge of the player and fires "payment:undone" for the page.
+            window.undoPayment = async function(url, opts) {
+                opts = opts || {};
+                if (opts.confirm !== false && !(await ask('Undo this payment?',
+                        'The payment is removed and the sessions it added are taken back off the player.', 'Yes, undo'))) {
+                    return null;
+                }
+                var d = await call(url);
+                if (d.success) {
+                    toast(d.message);
+                    document.querySelectorAll('[data-balance="' + d.player_id + '"]').forEach(function(el) {
+                        el.innerHTML = d.badge;
+                    });
+                    document.dispatchEvent(new CustomEvent('payment:undone', {
+                        detail: d
+                    }));
+                    if (opts.done) opts.done(d);
+                } else {
+                    Swal.fire('Not possible', d.message || 'Something went wrong.', 'error');
+                }
+                return d;
+            };
+
             // Delete a player for good: a clear warning first (history and payments go too)
             window.deletePlayer = async function(id, name, done) {
                 var r = await Swal.fire({

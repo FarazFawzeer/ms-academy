@@ -145,9 +145,10 @@ class Player extends Model
         return array_values(array_filter(explode(',', (string) $this->training_days)));
     }
 
+    /** A practice for 'all' players counts as everyone's training day. */
     public function trainsOn(?string $slot): bool
     {
-        return $slot !== null && in_array($slot, $this->days, true);
+        return $slot === 'all' || ($slot !== null && in_array($slot, $this->days, true));
     }
 
     /** "Fri & Sun", "Friday only" */

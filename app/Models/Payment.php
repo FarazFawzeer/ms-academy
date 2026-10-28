@@ -15,6 +15,22 @@ class Payment extends Model
         'paid_at' => 'datetime',
     ];
 
+    /**
+     * Undo (mistakes happen at the desk): an Admin can undo any payment; anyone else only a payment
+     * they recorded themselves, on the same day.
+     */
+    public function canBeUndoneBy($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+        if (in_array($user->type, ['Super Admin', 'Admin'], true)) {
+            return true;
+        }
+
+        return (int) $this->received_by === (int) $user->id && $this->created_at && $this->created_at->isToday();
+    }
+
     public function player(): BelongsTo
     {
         return $this->belongsTo(Player::class);

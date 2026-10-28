@@ -5,6 +5,242 @@
     @include('partials.js-helpers')
 
     <style>
+        /* ---------- calendar ---------- */
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cal-title {
+            min-width: 130px;
+            text-align: center;
+        }
+
+        .cal-quick {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cal-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .cal-legend i {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            margin-right: 5px;
+            vertical-align: -1px;
+        }
+
+        .cal-legend i.sel {
+            border: 2px solid #0f766e;
+            background: rgba(15, 118, 110, .12);
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .cal-wd {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            padding: 4px 0;
+        }
+
+        .cal-day {
+            position: relative;
+            min-height: 84px;
+            padding: 6px;
+            border: 1.5px solid rgba(100, 116, 139, .18);
+            border-radius: 10px;
+            background: var(--bs-card-bg, #fff);
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            transition: border-color .12s ease, background .12s ease;
+        }
+
+        .cal-day:hover {
+            border-color: rgba(15, 118, 110, .5);
+        }
+
+        .cal-day.out {
+            background: transparent;
+            border-style: dashed;
+            opacity: .35;
+            cursor: default;
+        }
+
+        .cal-day.past {
+            background: rgba(100, 116, 139, .05);
+        }
+
+        .cal-day.past .n {
+            color: #94a3b8;
+        }
+
+        .cal-day.today {
+            box-shadow: inset 0 0 0 2px rgba(15, 118, 110, .35);
+        }
+
+        .cal-day .n {
+            font-weight: 600;
+            font-size: 13px;
+            color: #334155;
+        }
+
+        .cal-day .chip {
+            display: flex;
+            flex-direction: column;
+            border-radius: 6px;
+            padding: 3px 6px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.25;
+            background: color-mix(in srgb, var(--c) 12%, transparent);
+            color: var(--c);
+        }
+
+        .cal-day .chip .t {
+            font-weight: 500;
+            opacity: .85;
+        }
+
+        .cal-day .chip.off {
+            background: rgba(148, 163, 184, .18);
+            color: #64748b;
+            text-decoration: line-through;
+        }
+
+        .cal-day .cnt {
+            font-size: 10.5px;
+            color: #64748b;
+        }
+
+        .cal-day .tick {
+            position: absolute;
+            top: 4px;
+            right: 5px;
+            color: #0f766e;
+            font-size: 18px;
+            display: none;
+        }
+
+        .cal-day.sel {
+            border-color: #0f766e;
+            background: rgba(15, 118, 110, .08);
+        }
+
+        .cal-day.sel .tick {
+            display: block;
+        }
+
+        .cal-bar {
+            position: sticky;
+            bottom: 10px;
+            z-index: 3;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(15, 118, 110, .35);
+            background: var(--bs-card-bg, #fff);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .12);
+        }
+
+        .cal-sel {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .grp-pick {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .grp-pick input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .grp-pick label {
+            margin: 0;
+            padding: 7px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+        }
+
+        .grp-pick input:checked + label {
+            border-color: var(--c);
+            background: color-mix(in srgb, var(--c) 10%, transparent);
+            color: var(--c);
+        }
+
+        .grp-pick input:focus-visible + label {
+            outline: 2px solid var(--c);
+            outline-offset: 2px;
+        }
+
+        /* phones: compact cells, colour bar instead of text */
+        @media (max-width: 575.98px) {
+            .cal-grid {
+                gap: 3px;
+            }
+
+            .cal-day {
+                min-height: 54px;
+                padding: 4px 3px;
+                border-radius: 8px;
+            }
+
+            .cal-day .chip {
+                padding: 0;
+                height: 6px;
+                border-radius: 3px;
+                background: var(--c);
+            }
+
+            .cal-day .chip.off {
+                background: #94a3b8;
+            }
+
+            .cal-day .chip .full,
+            .cal-day .chip .t,
+            .cal-day .cnt {
+                display: none;
+            }
+
+            .cal-day .tick {
+                font-size: 14px;
+                top: 2px;
+                right: 2px;
+            }
+
+            .cal-title {
+                min-width: 100px;
+            }
+        }
+
         .sc-tabs .nav-link {
             font-weight: 600;
         }
@@ -148,18 +384,147 @@
         }
     </style>
 
+    @php
+        $groupColor = ['fri' => '#2563eb', 'sun' => '#0f766e', 'all' => '#b45309'];
+        $groupShort = ['fri' => 'Fri players', 'sun' => 'Sun players', 'all' => 'All players'];
+        $todayKey = today()->toDateString();
+        $prevMonth = $month->copy()->subMonth()->format('Y-m');
+        $nextMonth = $month->copy()->addMonth()->format('Y-m');
+    @endphp
+
+    {{-- ================= Calendar: pick many days, one submit ================= --}}
+    <div class="card" id="calCard">
+        <div class="card-header">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Practice Calendar</h5>
+                    <p class="card-subtitle mb-0">Tap the days, choose who the practice is for, then press <strong>Add
+                            practice</strong> once. Tap existing days to cancel or remove them.</p>
+                </div>
+                <div class="cal-nav">
+                    <a href="{{ route('admin.schedule.index', ['month' => $prevMonth, 'view' => $view]) }}" class="btn btn-light btn-sm"
+                        aria-label="Previous month"><iconify-icon icon="solar:alt-arrow-left-outline"></iconify-icon></a>
+                    <strong class="cal-title">{{ $month->format('F Y') }}</strong>
+                    <a href="{{ route('admin.schedule.index', ['month' => $nextMonth, 'view' => $view]) }}" class="btn btn-light btn-sm"
+                        aria-label="Next month"><iconify-icon icon="solar:alt-arrow-right-outline"></iconify-icon></a>
+                </div>
+            </div>
+            <div class="cal-quick mt-3">
+                <span class="text-muted small me-1">Quick select:</span>
+                <button type="button" class="btn btn-sm btn-soft-primary" data-pick-weekday="5">All Fridays</button>
+                <button type="button" class="btn btn-sm btn-soft-primary" data-pick-weekday="0">All Sundays</button>
+                <button type="button" class="btn btn-sm btn-soft-secondary" data-pick-weekday="56">Fridays + Sundays</button>
+                <button type="button" class="btn btn-sm btn-light" id="calClear">Clear</button>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="cal-legend mb-2">
+                @foreach ($groups as $key => $label)
+                    <span><i style="background: {{ $groupColor[$key] ?? '#475569' }}"></i>{{ $label }}</span>
+                @endforeach
+                <span><i style="background:#94a3b8"></i>Cancelled</span>
+                <span><i class="sel"></i>Selected</span>
+            </div>
+
+            <div class="cal-grid" id="calGrid">
+                @foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $wd)
+                    <div class="cal-wd">{{ $wd }}</div>
+                @endforeach
+
+                @for ($d = $gridFrom->copy(); $d->lte($gridTo); $d->addDay())
+                    @php
+                        $key = $d->toDateString();
+                        $daySessions = $inGrid[$key] ?? collect();
+                        $act = $daySessions->firstWhere('is_cancelled', false);
+                        $can = $daySessions->firstWhere('is_cancelled', true);
+                        $state = $act ? 'active' : ($can ? 'cancelled' : 'none');
+                        $inMonth = $d->month === $month->month;
+                        $cnt = $marked[$key] ?? 0;
+                    @endphp
+                    @if (!$inMonth)
+                        <div class="cal-day out" aria-hidden="true"><span class="n">{{ $d->day }}</span></div>
+                    @else
+                        <button type="button" class="cal-day {{ $key < $todayKey ? 'past' : '' }} {{ $key === $todayKey ? 'today' : '' }} st-{{ $state }}"
+                            data-date="{{ $key }}" data-weekday="{{ $d->dayOfWeek }}" data-state="{{ $state }}"
+                            data-past="{{ $key < $todayKey ? 1 : 0 }}" data-marked="{{ $cnt }}"
+                            aria-pressed="false" aria-label="{{ $d->format('l d F') }}{{ $act ? ', ' . $act->label : ($can ? ', cancelled' : '') }}">
+                            <span class="n">{{ $d->day }}</span>
+                            @if ($act)
+                                <span class="chip" style="--c: {{ $groupColor[$act->slot] ?? '#475569' }}">
+                                    <span class="full">{{ $groupShort[$act->slot] ?? $act->slot }}</span>
+                                    <span class="t">{{ $act->start_time ? \Carbon\Carbon::parse($act->start_time)->format('g:i') : '' }}</span>
+                                </span>
+                                @if ($cnt)
+                                    <span class="cnt">{{ $cnt }} marked</span>
+                                @endif
+                            @elseif ($can)
+                                <span class="chip off"><span class="full">Cancelled</span></span>
+                            @endif
+                            <span class="tick"><iconify-icon icon="solar:check-circle-bold"></iconify-icon></span>
+                        </button>
+                    @endif
+                @endfor
+            </div>
+
+            {{-- action bar: appears when days are selected --}}
+            <div class="cal-bar d-none" id="calBar">
+                <div class="cal-sel"><strong id="calCount">0</strong> day(s) selected <span class="text-muted" id="calList"></span></div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label small mb-1">Practice for</label>
+                        <div class="grp-pick">
+                            <input type="radio" name="calSlot" id="cs_auto" value="auto"
+                                data-start="{{ \App\Models\PracticeSession::defaultTimes('fri')[0] }}"
+                                data-end="{{ \App\Models\PracticeSession::defaultTimes('fri')[1] }}">
+                            <label for="cs_auto" style="--c: #334155" title="Fridays for Friday players, Sundays for Sunday players">By day
+                                (Fri / Sun players)</label>
+                            @foreach ($groups as $key => $label)
+                                <input type="radio" name="calSlot" id="cs_{{ $key }}" value="{{ $key }}" {{ $loop->last ? 'checked' : '' }}
+                                    data-start="{{ \App\Models\PracticeSession::defaultTimes($key)[0] }}"
+                                    data-end="{{ \App\Models\PracticeSession::defaultTimes($key)[1] }}">
+                                <label for="cs_{{ $key }}" style="--c: {{ $groupColor[$key] ?? '#475569' }}">{{ $label }}</label>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-1" for="calStart">Start</label>
+                        <input type="time" class="form-control" id="calStart" value="16:00">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-1" for="calEnd">End</label>
+                        <input type="time" class="form-control" id="calEnd" value="17:30">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small mb-1" for="calNote">Note <span class="text-muted">(optional)</span></label>
+                        <input type="text" class="form-control" id="calNote" maxlength="150" placeholder="Ex: Main ground">
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="button" class="btn btn-primary ac-btn" data-bulk="add">
+                        <iconify-icon icon="solar:add-circle-outline"></iconify-icon> Add practice
+                    </button>
+                    <button type="button" class="btn btn-soft-warning ac-btn" data-bulk="cancel">
+                        <iconify-icon icon="solar:close-circle-outline"></iconify-icon> Cancel days
+                    </button>
+                    <button type="button" class="btn btn-soft-success ac-btn" data-bulk="restore">
+                        <iconify-icon icon="solar:restart-outline"></iconify-icon> Put back
+                    </button>
+                    <button type="button" class="btn btn-soft-danger ac-btn" data-bulk="remove">
+                        <iconify-icon icon="solar:trash-bin-trash-outline"></iconify-icon> Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                 <div>
                     <h5 class="card-title mb-0">Practice Days</h5>
-                    <p class="card-subtitle mb-0">
-                        Regular:
-                        @foreach ($slots as $s)
-                            {{ $s['label'] }} {{ \Carbon\Carbon::parse($s['start'])->format('g:i') }}-{{ \Carbon\Carbon::parse($s['end'])->format('g:i A') }}{{ $loop->last ? '.' : ',' }}
-                        @endforeach
-                        These are added automatically. Move, re-time or cancel any single day.
-                    </p>
+                    <p class="card-subtitle mb-0">Every practice day in a list. Change the date or time of a single day,
+                        cancel it or put it back.</p>
                 </div>
                 <button type="button" class="btn btn-primary" id="btnAdd">
                     <iconify-icon icon="solar:add-circle-outline" class="me-1"></iconify-icon> Add Practice
@@ -184,7 +549,7 @@
                     $isToday = $s->session_date->isToday();
                     $isPast = $s->session_date->lt(today());
                     $locked = $count > 0;
-                    $isAdded = !$s->is_moved && $s->planned_date->dayOfWeek !== (int) ($slots[$s->slot]['weekday'] ?? -1);
+                    $isAdded = false; // every day is picked by the admin now
                 @endphp
 
                 @if ($s->session_date->format('Y-m') !== $lastMonth)
@@ -274,15 +639,14 @@
                     <div id="psMessage"></div>
 
                     <div class="mb-3" id="slotWrap">
-                        <label class="form-label">For players who train on</label>
+                        <label class="form-label">Practice for</label>
                         <select name="slot" id="psSlot" class="form-select">
-                            @foreach ($slots as $key => $s)
-                                <option value="{{ $key }}" data-start="{{ $s['start'] }}" data-end="{{ $s['end'] }}">
-                                    {{ $s['label'] }}</option>
+                            @foreach ($groups as $key => $label)
+                                <option value="{{ $key }}" data-start="{{ \App\Models\PracticeSession::defaultTimes($key)[0] }}"
+                                    data-end="{{ \App\Models\PracticeSession::defaultTimes($key)[1] }}">{{ $label }}</option>
                             @endforeach
                         </select>
-                        <div class="form-text">Example: Sunday is off, so add a Saturday practice for the Sunday players.
-                        </div>
+                        <div class="form-text">To add many days at once, use the calendar above.</div>
                     </div>
 
                     <div class="mb-3">
@@ -424,6 +788,169 @@
                     }, 600);
                 }
             });
+        })();
+    </script>
+    <script>
+        // Practice calendar: tap days to select, then one action for all of them
+        (function() {
+            var bulkUrl = "{{ route('admin.schedule.bulk') }}";
+            var grid = document.getElementById('calGrid');
+            var bar = document.getElementById('calBar');
+            var picked = new Set();
+            var days = Array.prototype.slice.call(grid.querySelectorAll('.cal-day[data-date]'));
+            var fmt = function(d) {
+                var dt = new Date(d + 'T00:00:00');
+                return dt.toLocaleDateString('en-GB', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short'
+                });
+            };
+
+            function el(date) {
+                return grid.querySelector('.cal-day[data-date="' + date + '"]');
+            }
+
+            function refresh() {
+                days.forEach(function(d) {
+                    var on = picked.has(d.dataset.date);
+                    d.classList.toggle('sel', on);
+                    d.setAttribute('aria-pressed', on ? 'true' : 'false');
+                });
+                var list = Array.from(picked).sort();
+                bar.classList.toggle('d-none', list.length === 0);
+                document.getElementById('calCount').textContent = list.length;
+                document.getElementById('calList').textContent = list.length ?
+                    '(' + list.slice(0, 6).map(fmt).join(', ') + (list.length > 6 ? ', ...' : '') + ')' : '';
+
+                // which actions make sense for this selection
+                var st = list.map(function(d) {
+                    return el(d).dataset;
+                });
+                var has = function(f) {
+                    return st.some(f);
+                };
+                setOn('add', has(function(x) {
+                    return x.state !== 'active' && x.past === '0';
+                }));
+                setOn('cancel', has(function(x) {
+                    return x.state === 'active' && x.marked === '0';
+                }));
+                setOn('restore', has(function(x) {
+                    return x.state === 'cancelled';
+                }));
+                setOn('remove', has(function(x) {
+                    return x.state !== 'none' && x.past === '0' && x.marked === '0';
+                }));
+
+                // suggest the group from the days picked (all Fridays -> Friday players, etc.)
+                if (list.length) {
+                    var wds = st.map(function(x) {
+                        return x.weekday;
+                    });
+                    var allFri = wds.every(function(w) {
+                        return w === '5';
+                    });
+                    var allSun = wds.every(function(w) {
+                        return w === '0';
+                    });
+                    var friSun = wds.every(function(w) {
+                        return w === '5' || w === '0';
+                    });
+                    // Fridays + Sundays together: each day for its own players
+                    var slot = allFri ? 'fri' : (allSun ? 'sun' : (friSun ? 'auto' : 'all'));
+                    var r = document.getElementById('cs_' + slot);
+                    if (r && !bar.dataset.touched) {
+                        r.checked = true;
+                        setTimes(r);
+                    }
+                }
+            }
+
+            function setOn(action, on) {
+                var b = bar.querySelector('[data-bulk="' + action + '"]');
+                b.disabled = !on;
+                b.classList.toggle('d-none', !on && action !== 'add');
+            }
+
+            function setTimes(r) {
+                document.getElementById('calStart').value = r.dataset.start;
+                document.getElementById('calEnd').value = r.dataset.end;
+            }
+
+            grid.addEventListener('click', function(e) {
+                var d = e.target.closest('.cal-day[data-date]');
+                if (!d) return;
+                var k = d.dataset.date;
+                picked.has(k) ? picked.delete(k) : picked.add(k);
+                refresh();
+            });
+
+            // quick select: all Fridays / Sundays of this month from today on (56 = both)
+            document.querySelectorAll('[data-pick-weekday]').forEach(function(b) {
+                b.addEventListener('click', function() {
+                    var want = b.dataset.pickWeekday === '56' ? ['5', '0'] : [b.dataset.pickWeekday];
+                    days.forEach(function(d) {
+                        if (want.indexOf(d.dataset.weekday) !== -1 && d.dataset.past === '0') picked.add(d.dataset.date);
+                    });
+                    delete bar.dataset.touched;
+                    refresh();
+                });
+            });
+            document.getElementById('calClear').addEventListener('click', function() {
+                picked.clear();
+                delete bar.dataset.touched;
+                refresh();
+            });
+
+            document.querySelectorAll('input[name=calSlot]').forEach(function(r) {
+                r.addEventListener('change', function() {
+                    bar.dataset.touched = '1';
+                    setTimes(r);
+                });
+            });
+
+            bar.querySelectorAll('[data-bulk]').forEach(function(b) {
+                b.addEventListener('click', async function() {
+                    var action = b.dataset.bulk;
+                    var dates = Array.from(picked).sort();
+                    if (!dates.length) return;
+
+                    var ask = {
+                        cancel: ['Cancel ' + dates.length + ' day(s)?', 'They stay on the calendar as "Cancelled" (no practice, no absences).', 'Yes, cancel'],
+                        remove: ['Remove ' + dates.length + ' day(s)?', 'Use this for days added by mistake. They disappear from the calendar.', 'Yes, remove']
+                    } [action];
+                    if (ask && !(await AC.ask(ask[0], ask[1], ask[2]))) return;
+
+                    var slot = (document.querySelector('input[name=calSlot]:checked') || {}).value;
+                    b.disabled = true;
+                    var d = await AC.call(bulkUrl, {
+                        body: {
+                            action: action,
+                            dates: dates,
+                            slot: slot,
+                            start_time: document.getElementById('calStart').value,
+                            end_time: document.getElementById('calEnd').value,
+                            note: document.getElementById('calNote').value
+                        }
+                    });
+                    b.disabled = false;
+                    if (d.success) {
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Done',
+                            text: d.message,
+                            timer: d.message.indexOf('Skipped') === -1 ? 1600 : undefined,
+                            showConfirmButton: d.message.indexOf('Skipped') !== -1
+                        });
+                        location.reload();
+                    } else {
+                        Swal.fire('Nothing changed', d.message || 'Something went wrong.', 'warning');
+                    }
+                });
+            });
+
+            refresh();
         })();
     </script>
 @endsection

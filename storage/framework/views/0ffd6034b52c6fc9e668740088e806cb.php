@@ -134,10 +134,30 @@
             outline-offset: 2px;
         }
 
+        .pay-pick.four {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        @media (max-width: 991.98px) {
+            .pay-pick.four {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 575.98px) {
-            .pay-pick {
+
+            .pay-pick,
+            .pay-pick.four {
                 grid-template-columns: 1fr;
             }
+        }
+
+        .pl-now {
+            font-size: 13px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
         }
 
         .before-box {
@@ -266,48 +286,57 @@
                     </div>
                 </div>
 
-                <?php if (! ($player)): ?>
-                    
-                    <div class="mb-4">
-                        <label class="form-label d-block">Payment on joining</label>
-                        <div class="pay-pick">
-                            <input type="radio" name="payment_mode" id="pm_now" value="now" checked>
-                            <label for="pm_now"><iconify-icon icon="solar:wallet-money-outline"></iconify-icon>
-                                <span><strong>Paying now</strong><small class="pm-fee"></small></span></label>
+                
+                <div class="mb-4">
+                    <label class="form-label d-block"><?php echo e($player ? 'Sessions & payment' : 'Payment on joining'); ?></label>
+                    <?php if($player): ?>
+                        <div class="pl-now mb-2">Now: <?php echo e($player->balanceBadge()); ?>
 
-                            <input type="radio" name="payment_mode" id="pm_before" value="before">
-                            <label for="pm_before"><iconify-icon icon="solar:history-outline"></iconify-icon>
-                                <span><strong>Already paid before</strong><small>Some sessions already done</small></span></label>
+                            <span class="text-muted ms-1">Leave "No change" unless something is missing.</span></div>
+                    <?php endif; ?>
+                    <div class="pay-pick <?php echo e($player ? 'four' : ''); ?>">
+                        <?php if($player): ?>
+                            <input type="radio" name="payment_mode" id="pm_keep" value="keep" checked>
+                            <label for="pm_keep"><iconify-icon icon="solar:check-read-outline"></iconify-icon>
+                                <span><strong>No change</strong><small>Save details only</small></span></label>
+                        <?php endif; ?>
 
-                            <input type="radio" name="payment_mode" id="pm_none" value="none">
-                            <label for="pm_none"><iconify-icon icon="solar:clock-circle-outline"></iconify-icon>
-                                <span><strong>Not paid yet</strong><small>Collect later</small></span></label>
-                        </div>
+                        <input type="radio" name="payment_mode" id="pm_now" value="now" <?php echo e($player ? '' : 'checked'); ?>>
+                        <label for="pm_now"><iconify-icon icon="solar:wallet-money-outline"></iconify-icon>
+                            <span><strong><?php echo e($player ? 'Paid now' : 'Paying now'); ?></strong><small class="pm-fee"></small></span></label>
 
-                        
-                        <div class="before-box mt-3 d-none" id="beforeBox">
-                            <div class="row g-3">
-                                <div class="col-sm-6">
-                                    <label class="form-label" for="paid_on">Paid on <span class="text-muted">(optional)</span></label>
-                                    <input type="date" id="paid_on" name="paid_on" class="form-control"
-                                        max="<?php echo e(today()->toDateString()); ?>">
-                                    <div class="form-text">Leave empty if you don't know. Today's date is used.</div>
-                                </div>
-                                <div class="col-sm-6">
-                                    <label class="form-label" for="used">Sessions already done</label>
-                                    <div class="input-group stepper">
-                                        <button type="button" class="btn btn-outline-secondary" data-step="-1" aria-label="One less">&minus;</button>
-                                        <input type="number" id="used" name="used" class="form-control text-center" value="0"
-                                            min="0" max="8" inputmode="numeric">
-                                        <button type="button" class="btn btn-outline-secondary" data-step="1" aria-label="One more">+</button>
-                                    </div>
-                                    <div class="form-text" id="usedHint"></div>
-                                </div>
-                            </div>
-                            <div id="usedDates" class="mt-3"></div>
-                        </div>
+                        <input type="radio" name="payment_mode" id="pm_before" value="before">
+                        <label for="pm_before"><iconify-icon icon="solar:history-outline"></iconify-icon>
+                            <span><strong>Already paid before</strong><small>Some sessions already done</small></span></label>
+
+                        <input type="radio" name="payment_mode" id="pm_none" value="none">
+                        <label for="pm_none"><iconify-icon icon="solar:clock-circle-outline"></iconify-icon>
+                            <span><strong>Not paid yet</strong><small>Played sessions are due</small></span></label>
                     </div>
-                <?php endif; ?>
+
+                    
+                    <div class="before-box mt-3 d-none" id="beforeBox">
+                        <div class="row g-3">
+                            <div class="col-sm-6" id="paidOnWrap">
+                                <label class="form-label" for="paid_on">Paid on <span class="text-muted">(optional)</span></label>
+                                <input type="date" id="paid_on" name="paid_on" class="form-control"
+                                    max="<?php echo e(today()->toDateString()); ?>">
+                                <div class="form-text">Leave empty if you don't know. Today's date is used.</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="used">Sessions already done</label>
+                                <div class="input-group stepper">
+                                    <button type="button" class="btn btn-outline-secondary" data-step="-1" aria-label="One less">&minus;</button>
+                                    <input type="number" id="used" name="used" class="form-control text-center" value="0"
+                                        min="0" max="8" inputmode="numeric">
+                                    <button type="button" class="btn btn-outline-secondary" data-step="1" aria-label="One more">+</button>
+                                </div>
+                                <div class="form-text" id="usedHint"></div>
+                            </div>
+                        </div>
+                        <div id="usedDates" class="mt-3"></div>
+                    </div>
+                </div>
 
                 <div class="d-flex justify-content-end gap-2">
                     <a href="<?php echo e($player ? route('admin.players.show', $player) : route('admin.players.index')); ?>"
@@ -346,11 +375,20 @@
                 document.querySelectorAll('.pm-fee').forEach(function(el) {
                     el.textContent = p ? 'LKR ' + AC.fmt(p.fee) + ' today' : '';
                 });
-                if (used) {
-                    used.max = p ? p.sessions : 8;
-                    if (+used.value > +used.max) used.value = used.max;
-                    drawDates();
-                }
+                if (used) setMax();
+            }
+
+            function mode() {
+                var r = document.querySelector('input[name=payment_mode]:checked');
+                return r ? r.value : '';
+            }
+
+            // a paid package covers at most its own sessions; unpaid sessions can be more
+            function setMax() {
+                var p = plan();
+                used.max = mode() === 'before' ? (p ? p.sessions : 8) : 64;
+                if (+used.value > +used.max) used.value = used.max;
+                drawDates();
             }
 
             // one optional date field per session already done (typed dates are kept when the number changes)
@@ -358,8 +396,10 @@
                 if (!datesBox) return;
                 var n = Math.max(0, Math.min(+used.value || 0, +used.max));
                 var p = plan();
-                document.getElementById('usedHint').textContent = p ?
-                    (p.sessions - n) + ' of ' + p.sessions + ' sessions will be left' : '';
+                var hint = '';
+                if (mode() === 'before' && p) hint = (p.sessions - n) + ' of ' + p.sessions + ' sessions will be left';
+                if (mode() === 'none') hint = n ? n + ' unpaid session(s) - shown as payment due' : 'Played earlier without paying? Add them here.';
+                document.getElementById('usedHint').textContent = hint;
 
                 var keep = Array.from(datesBox.querySelectorAll('input[name="used_dates[]"]')).map(function(i) {
                     return i.value;
@@ -381,10 +421,15 @@
                 b.addEventListener('change', showPlan);
             });
 
+            function showBox() {
+                var m = mode();
+                before.classList.toggle('d-none', m !== 'before' && m !== 'none');
+                document.getElementById('paidOnWrap').classList.toggle('d-none', m !== 'before');
+                setMax();
+            }
+
             document.querySelectorAll('input[name=payment_mode]').forEach(function(r) {
-                r.addEventListener('change', function() {
-                    before.classList.toggle('d-none', r.value !== 'before' || !r.checked);
-                });
+                r.addEventListener('change', showBox);
             });
 
             if (used) {
@@ -398,6 +443,7 @@
             }
 
             showPlan();
+            showBox();
         })();
 
         document.getElementById('photo').addEventListener('change', function() {

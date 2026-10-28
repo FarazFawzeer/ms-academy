@@ -80,6 +80,8 @@ Route::middleware(['auth', SettlePracticeDays::class])->prefix('admin')->name('a
 
     // Payments list
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+    // undo a payment entered by mistake: Admin any, others only their own from today (checked in the controller)
+    Route::post('payments/{payment}/undo', [PaymentController::class, 'undo'])->whereNumber('payment')->name('payments.undo');
 
     // Reminders (WhatsApp)
     Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
@@ -97,10 +99,13 @@ Route::middleware(['auth', SettlePracticeDays::class])->prefix('admin')->name('a
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->whereNumber('payment')->name('payments.destroy');
         Route::post('players/{player}/extra-days', [PaymentController::class, 'extraDays'])->whereNumber('player')->name('players.extra-days');
         Route::delete('players/{player}', [PlayerController::class, 'destroy'])->whereNumber('player')->name('players.destroy');
+        Route::get('players/{player}/day', [PlayerController::class, 'dayInfo'])->whereNumber('player')->name('players.day-info');
+        Route::post('players/{player}/day', [PlayerController::class, 'markDay'])->whereNumber('player')->name('players.day');
 
-        // Practice schedule (Friday / Sunday by default; move, re-time, cancel, add extra)
+        // Practice schedule (admin picks the days on a calendar; move, re-time, cancel single days)
         Route::get('schedule', [ScheduleController::class, 'index'])->name('schedule.index');
         Route::post('schedule', [ScheduleController::class, 'store'])->name('schedule.store');
+        Route::post('schedule/bulk', [ScheduleController::class, 'bulk'])->name('schedule.bulk');
         Route::post('schedule/{practice}', [ScheduleController::class, 'update'])->whereNumber('practice')->name('schedule.update');
         Route::post('schedule/{practice}/cancel', [ScheduleController::class, 'cancel'])->whereNumber('practice')->name('schedule.cancel');
         Route::post('schedule/{practice}/restore', [ScheduleController::class, 'restore'])->whereNumber('practice')->name('schedule.restore');

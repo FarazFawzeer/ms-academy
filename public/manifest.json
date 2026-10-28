@@ -1,0 +1,22 @@
+{
+    "id": "/",
+    "name": "MS Football Academy",
+    "short_name": "MS Academy",
+    "description": "MS Football Academy staff app: QR attendance, players, fees and reminders.",
+    "start_url": "/index",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#07142b",
+    "theme_color": "#07142b",
+    "lang": "en",
+    "icons": [
+        { "src": "/images/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/images/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/images/app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Scan attendance", "short_name": "Scan", "url": "/admin/attendance/scan", "icons": [{ "src": "/images/app/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Players", "url": "/admin/players", "icons": [{ "src": "/images/app/icon-192.png", "sizes": "192x192" }] }
+    ]
+}

@@ -44,7 +44,32 @@ class PracticeSession extends Model
 
     public static function slotLabel(?string $slot): string
     {
+        if ($slot === 'all') {
+            return (string) config('academy.all_players_label', 'All players');
+        }
+
         return self::slots()[$slot]['label'] ?? ucfirst((string) $slot);
+    }
+
+    /** Who a practice day is for: ['fri' => 'Friday players', 'sun' => 'Sunday players', 'all' => 'All players']. */
+    public static function groups(): array
+    {
+        $groups = [];
+        foreach (self::slots() as $key => $s) {
+            $groups[$key] = $s['label'] . ' players';
+        }
+        $groups['all'] = self::slotLabel('all');
+
+        return $groups;
+    }
+
+    /** Default start / end time for a new practice of that group. */
+    public static function defaultTimes(string $slot): array
+    {
+        $slots = self::slots();
+        $s     = $slots[$slot] ?? (reset($slots) ?: []);
+
+        return [$s['start'] ?? '16:00', $s['end'] ?? '17:30'];
     }
 
     /**
@@ -53,6 +78,11 @@ class PracticeSession extends Model
      */
     public static function generate($from, $to): void
     {
+        // practice days are picked by the admin on the calendar unless auto_schedule is switched on
+        if (!config('academy.auto_schedule', false)) {
+            return;
+        }
+
         $from  = Carbon::parse($from)->startOfDay();
         $to    = Carbon::parse($to)->startOfDay();
         $start = Carbon::parse(config('academy.schedule_start', today()->toDateString()))->startOfDay();
@@ -183,9 +213,17 @@ class PracticeSession extends Model
         return $q->where('is_cancelled', false);
     }
 
+    /** "Friday practice" on a Friday, "Practice for Friday players" on another day, "Practice for all players". */
     public function getLabelAttribute(): string
     {
-        return self::slotLabel($this->slot) . ' practice';
+        if ($this->slot === 'all') {
+            return 'Practice for all players';
+        }
+        $weekday = self::slots()[$this->slot]['weekday'] ?? null;
+
+        return $this->session_date && $weekday !== null && $this->session_date->dayOfWeek === (int) $weekday
+            ? self::slotLabel($this->slot) . ' practice'
+            : 'Practice for ' . self::slotLabel($this->slot) . ' players';
     }
 
     public function getIsMovedAttribute(): bool

@@ -158,6 +158,13 @@
             document.addEventListener('payment:saved', function(ev) {
                 removeRow(ev.detail.id);
             });
+
+            // payment undone: the reminder may be back - reload the list
+            document.addEventListener('payment:undone', function() {
+                setTimeout(function() {
+                    location.reload();
+                }, 700);
+            });
         })();
     </script>
 @endsection
