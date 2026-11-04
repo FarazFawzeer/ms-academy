@@ -134,6 +134,65 @@ class PlayerSessions
         return $wrong->count();
     }
 
+    /**
+     * The practice days one payment pays for (receipt, client 3 Nov 2026). Sessions are used first in,
+     * first out: every attended day and every counted absence uses the oldest paid session left, and
+     * sessions entered as "already used" without a date come first. Days already used are returned
+     * with their real date ('P' present / 'A' absent, 'B' = before the system, no date); the rest are
+     * the next practice days on the player's own training days from the schedule (null = not on the
+     * schedule yet). Returns a list of ['date' => Carbon|null, 'mark' => 'P'|'A'|'B'|null].
+     */
+    public static function paymentDates(\App\Models\Payment $payment): array
+    {
+        $player = $payment->player;
+        if (!$player) {
+            return [];
+        }
+
+        $payments = \App\Models\Payment::where('player_id', $player->id)->orderBy('paid_at')->orderBy('id')->get(['id', 'sessions', 'paid_at']);
+        $before = 0;
+        foreach ($payments as $p) {
+            if ($p->id === $payment->id) {
+                break;
+            }
+            $before += (int) $p->sessions;
+        }
+
+        $used = DB::table('attendances')->where('player_id', $player->id)->get(['attendance_date as d'])->map(fn ($r) => [Carbon::parse($r->d), 'P'])
+            ->concat(DB::table('absences')->where('player_id', $player->id)->where('counted', true)->get(['attendance_date as d'])->map(fn ($r) => [Carbon::parse($r->d), 'A']))
+            ->sortBy(fn ($u) => $u[0]->toDateString())->values();
+
+        // sessions taken off without a date (earlier sessions when the player was added)
+        $undated = max(0, (int) $payments->sum('sessions') - $used->count() - self::balance($player));
+        $seq = array_merge(array_fill(0, $undated, [null, 'B']), $used->all());
+
+        $out  = [];
+        $need = (int) $payment->sessions;
+        for ($i = $before; $i < $before + $need && $i < count($seq); $i++) {
+            $out[] = ['date' => $seq[$i][0], 'mark' => $seq[$i][1]];
+        }
+
+        // not used yet: the coming practice days of this player
+        if (count($out) < $need) {
+            $last = $used->isNotEmpty() ? $used->last()[0]->toDateString() : null;
+            $from = max($last ? Carbon::parse($last)->addDay()->toDateString() : '0000-00-00', $payment->paid_at->toDateString());
+            $next = \App\Models\PracticeSession::where('is_cancelled', false)
+                ->where('session_date', '>=', $from)
+                ->orderBy('session_date')
+                ->limit(200)
+                ->get(['session_date', 'slot'])
+                ->filter(fn ($s) => $player->trainsOn($s->slot))
+                ->values();
+            $k = 0;
+            while (count($out) < $need) {
+                $s = $next[$k++] ?? null;
+                $out[] = ['date' => $s?->session_date, 'mark' => null];
+            }
+        }
+
+        return $out;
+    }
+
     public static function balance(Player $player): int
     {
         return (int) DB::table('players')->where('id', $player->id)->value('sessions_balance');

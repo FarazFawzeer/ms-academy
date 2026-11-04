@@ -81,7 +81,7 @@ class ScheduleController extends Controller
     {
         $v = Validator::make($request->all(), [
             'slot'         => ['required', Rule::in(array_keys(PracticeSession::groups()))],
-            'session_date' => 'required|date|after_or_equal:today',
+            'session_date' => 'required|date',
         ] + $this->timeRules(), $this->messages());
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
@@ -102,7 +102,7 @@ class ScheduleController extends Controller
      *  add     = new practice on each day (skips days that already have one)
      *  cancel  = "no practice" on each day (skips days with attendance)
      *  restore = put cancelled days back on
-     *  remove  = delete days added by mistake (today or later, no attendance)
+     *  remove  = delete days added by mistake (nobody marked present or absent)
      */
     public function bulk(Request $request)
     {
@@ -131,7 +131,7 @@ class ScheduleController extends Controller
             foreach ($dates as $date) {
                 $active    = PracticeSession::where('session_date', $date)->where('is_cancelled', false)->get();
                 $cancelled = PracticeSession::where('session_date', $date)->where('is_cancelled', true)->get();
-                $marked    = $this->hasAttendance($date);
+                $marked    = $this->hasMarks($date);
 
                 if ($action === 'add') {
                     $slot = $request->input('slot');
@@ -141,8 +141,6 @@ class ScheduleController extends Controller
                     }
                     if ($slot === null) {
                         $skip['not a Friday or Sunday - choose a group for it'][] = $fmt($date);
-                    } elseif ($date < $today) {
-                        $skip['in the past'][] = $fmt($date);
                     } elseif ($active->isNotEmpty()) {
                         $skip['already a practice'][] = $fmt($date);
                     } else {
@@ -167,13 +165,12 @@ class ScheduleController extends Controller
                         $skip['already a practice'][] = $fmt($date);
                     } else {
                         $cancelled->first()->update(['is_cancelled' => false]);
+                        $this->closeIfPast($cancelled->first());
                         $done++;
                     }
                 } else { // remove
                     if ($active->isEmpty() && $cancelled->isEmpty()) {
                         $skip['nothing to remove'][] = $fmt($date);
-                    } elseif ($date < $today) {
-                        $skip['past days stay for the records - cancel instead'][] = $fmt($date);
                     } elseif ($marked) {
                         $skip['players already marked'][] = $fmt($date);
                     } else {
@@ -207,11 +204,8 @@ class ScheduleController extends Controller
         $oldDate = $practice->session_date->toDateString();
 
         if ($newDate !== $oldDate) {
-            if ($this->hasAttendance($oldDate)) {
+            if ($this->hasMarks($oldDate)) {
                 return response()->json(['success' => false, 'message' => 'Players were already marked on ' . $practice->session_date->format('D, d M') . ', so this practice cannot be moved.'], 422);
-            }
-            if ($newDate < today()->toDateString()) {
-                return response()->json(['success' => false, 'message' => 'A practice can only be moved to today or a later date.'], 422);
             }
             if (!$practice->is_cancelled && ($clash = $this->clash($newDate, $practice->id))) {
                 return response()->json(['success' => false, 'message' => $clash], 422);
@@ -224,14 +218,15 @@ class ScheduleController extends Controller
             'end_time'     => $request->input('end_time'),
             'note'         => $request->input('note'),
         ]);
+        $this->closeIfPast($practice);
 
         return response()->json(['success' => true, 'message' => $practice->label . ' saved for ' . $practice->session_date->format('D, d M') . '.']);
     }
 
     public function cancel(Request $request, PracticeSession $practice)
     {
-        if ($this->hasAttendance($practice->session_date->toDateString())) {
-            return response()->json(['success' => false, 'message' => 'Players were already marked on this day. Undo them on the scan page first.'], 422);
+        if ($this->hasMarks($practice->session_date->toDateString())) {
+            return response()->json(['success' => false, 'message' => 'Players were already marked on this day (present or absent). Clear them first.'], 422);
         }
 
         $practice->update(['is_cancelled' => true, 'note' => $request->input('note') ?: $practice->note]);
@@ -246,6 +241,7 @@ class ScheduleController extends Controller
         }
 
         $practice->update(['is_cancelled' => false]);
+        $this->closeIfPast($practice);
 
         return response()->json(['success' => true, 'message' => 'Practice on ' . $practice->session_date->format('D, d M') . ' is back on.']);
     }
@@ -265,6 +261,18 @@ class ScheduleController extends Controller
             'note'         => $note,
             'is_cancelled' => false,
         ])->save();
+        $this->closeIfPast($s);
+    }
+
+    /**
+     * A day added for the past (history from before the system, client 3 Nov 2026) is never settled
+     * automatically - the admin marks it in the register ("Rest absent" fills the absences).
+     */
+    private function closeIfPast(PracticeSession $s): void
+    {
+        if ($s->session_date->toDateString() < today()->toDateString() && !$s->closed_at) {
+            $s->forceFill(['closed_at' => now()])->save();
+        }
     }
 
     private function timeRules(): array
@@ -279,14 +287,15 @@ class ScheduleController extends Controller
     private function messages(): array
     {
         return [
-            'session_date.after_or_equal' => 'Choose today or a later date.',
             'end_time.after'              => 'The end time must be after the start time.',
         ];
     }
 
-    private function hasAttendance(string $date): bool
+    /** Anyone marked present or absent on that date. */
+    private function hasMarks(string $date): bool
     {
-        return Attendance::where('attendance_date', $date)->exists();
+        return Attendance::where('attendance_date', $date)->exists()
+            || DB::table('absences')->where('attendance_date', $date)->exists();
     }
 
     /** One practice per day: returns an error message when the date already has one. */

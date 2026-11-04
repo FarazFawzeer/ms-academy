@@ -36,20 +36,31 @@ class Payment extends Model
         return $this->belongsTo(Player::class);
     }
 
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    /** Receipt number printed on the receipt: R-000123 */
+    public function getReceiptNoAttribute(): string
+    {
+        return 'R-' . str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
     /**
      * Record a payment and add the paid sessions to the player's balance in one transaction.
      * Returns [Payment, newBalance].
      */
-    public static function record(int $playerId, float $amount, int $sessions, string $method = 'cash', ?string $note = null, ?int $userId = null): array
+    public static function record(int $playerId, float $amount, int $sessions, string $method = 'cash', ?string $note = null, ?int $userId = null, $paidAt = null): array
     {
-        return DB::transaction(function () use ($playerId, $amount, $sessions, $method, $note, $userId) {
+        return DB::transaction(function () use ($playerId, $amount, $sessions, $method, $note, $userId, $paidAt) {
             $payment = static::create([
                 'player_id'   => $playerId,
                 'amount'      => $amount,
                 'sessions'    => $sessions,
                 'method'      => $method,
                 'note'        => $note,
-                'paid_at'     => now(),
+                'paid_at'     => $paidAt ?: now(),
                 'received_by' => $userId,
             ]);
 

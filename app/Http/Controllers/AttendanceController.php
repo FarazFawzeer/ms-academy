@@ -217,12 +217,13 @@ class AttendanceController extends Controller
 
     public function registerExport(Request $request)
     {
-        $d    = $this->registerData($request);
-        $mark = ['P' => 'P', 'E' => 'P (extra)', 'A' => 'AB', 'U' => 'AB (not counted)', 'T' => 'not marked yet', 'X' => 'No practice', 'N' => '-', 'F' => ''];
+        $d    = $this->registerData($request, false);   // Excel: the chosen month only
+        $mark = ['P' => 'P', 'D' => 'P (not paid)', 'E' => 'P (extra)', 'G' => 'P (extra, not paid)', 'A' => 'AB', 'U' => 'AB (not counted)',
+            'T' => 'not marked yet', 'M' => 'not marked', 'X' => 'No practice', 'N' => '-', 'F' => ''];
 
         $headings = ['Player No', 'Player', 'Group', 'Days'];
         foreach ($d['columns'] as $c) {
-            $headings[] = $c['date']->format('D d M') . ($c['type'] === 'extra' ? ' (extra)' : '');
+            $headings[] = $c['date']->format('D d M') . ($c['type'] === 'extra' ? ' (extra)' : ($c['type'] === 'none' ? ' (no practice)' : ($c['type'] === 'cancelled' ? ' (cancelled)' : '')));
         }
         array_push($headings, 'Attended', 'Expected', 'Rate %');
 
@@ -240,17 +241,53 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Builds the grid. Cell codes:
-     *  P = present, E = present on a day that is not theirs (extra), A = absent (used a session),
-     *  U = absent but not counted (package already used up), T = today, not marked yet,
-     *  X = practice cancelled, N = not their training day / not joined yet, F = still to come.
+     * Admin, register "Rest absent" on a past practice day (mostly old days entered later): everyone
+     * expected that day who has no record yet is marked absent, the same as an automatic settle.
      */
-    private function registerData(Request $request): array
+    public function restAbsent(Request $request)
+    {
+        $date = (string) $request->input('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date >= today()->toDateString()) {
+            return response()->json(['success' => false, 'message' => 'Only a past practice day can be filled.'], 422);
+        }
+        $session = PracticeSession::forDate($date);
+        if (!$session) {
+            return response()->json(['success' => false, 'message' => 'There is no practice on this day.'], 422);
+        }
+
+        $n = DB::transaction(function () use ($session) {
+            if (!$session->closed_at) {
+                $session->forceFill(['closed_at' => now()])->save();   // never settled a second time
+            }
+            return PracticeSession::settleDay($session);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $n ? $n . ' player(s) marked absent on ' . Carbon::parse($date)->format('D d M') . '.' : 'Everyone is already marked on this day.',
+        ]);
+    }
+
+    /**
+     * Builds the grid. Cell codes:
+     *  P = present (paid), D = present but not paid (payment due), E / G = the same on a day that is
+     *  not theirs (extra), A = absent (used a session), U = absent but not counted (package already
+     *  used up), T = today, not marked yet, M = past day, not marked, X = practice cancelled,
+     *  N = not their training day / not joined yet, F = still to come.
+     * "Not paid" = the player's newest attended days that took the balance below 0.
+     */
+    /**
+     * $wide = the screen: two months before and after the chosen month are loaded too, so the grid
+     * slides straight on into the previous / next month (client, Nov 2026). Totals are for the chosen month.
+     */
+    private function registerData(Request $request, bool $wide = true): array
     {
         $month = (string) $request->query('month');
         $m     = preg_match('/^\d{4}-\d{2}$/', $month) ? Carbon::createFromFormat('Y-m-d', $month . '-01') : today()->startOfMonth();
-        $from  = $m->copy()->startOfMonth();
-        $to    = $m->copy()->endOfMonth();
+        $mFrom = $m->copy()->startOfMonth()->toDateString();
+        $mTo   = $m->copy()->endOfMonth()->toDateString();
+        $from  = $wide ? $m->copy()->subMonthsNoOverflow(2)->startOfMonth() : $m->copy()->startOfMonth();
+        $to    = $wide ? $m->copy()->addMonthsNoOverflow(2)->endOfMonth() : $m->copy()->endOfMonth();
         $group = AgeGroup::exists($request->query('group')) ? $request->query('group') : null;
         $days  = $request->query('days');
 
@@ -259,13 +296,33 @@ class AttendanceController extends Controller
         $sessions = PracticeSession::whereBetween('session_date', [$from->toDateString(), $to->toDateString()])
             ->orderBy('session_date')->orderBy('start_time')->get();
 
+        $sort  = in_array($request->query('sort'), ['name', 'newest'], true) ? $request->query('sort') : 'added';
+
         $players = Player::active()
             ->inAgeGroup($group)
             ->trainingDays($days)
-            ->get(['id', 'player_no', 'name', 'dob', 'photo_path', 'training_days', 'joined_at']);
+            ->get(['id', 'player_no', 'name', 'dob', 'photo_path', 'training_days', 'joined_at', 'sessions_balance', 'created_at']);
 
+        // by age group, then first added first (client), newest first or A-Z
         $order   = array_flip(AgeGroup::all());
-        $players = $players->sortBy(fn ($p) => sprintf('%02d %s', $order[$p->age_group] ?? 99, strtolower($p->name)))->values();
+        $players = $players->sortBy([
+            fn ($a, $b) => ($order[$a->age_group] ?? 99) <=> ($order[$b->age_group] ?? 99),
+            $sort === 'name'
+                ? fn ($a, $b) => strcasecmp($a->name, $b->name)
+                : ($sort === 'newest'
+                    ? fn ($a, $b) => [$b->created_at?->timestamp ?? 0, $b->id] <=> [$a->created_at?->timestamp ?? 0, $a->id]
+                    : fn ($a, $b) => [$a->created_at?->timestamp ?? 0, $a->id] <=> [$b->created_at?->timestamp ?? 0, $b->id]),
+        ])->values();
+
+        // [player_id][Y-m-d] = true for attended days not covered by a payment (newest first, as many as the balance is below 0)
+        $unpaid = [];
+        foreach ($players->filter(fn ($p) => (int) $p->sessions_balance < 0) as $p) {
+            Attendance::where('player_id', $p->id)->orderByDesc('attendance_date')->limit(-(int) $p->sessions_balance)
+                ->pluck('attendance_date')
+                ->each(function ($d) use (&$unpaid, $p) {
+                    $unpaid[$p->id][Carbon::parse($d)->toDateString()] = true;
+                });
+        }
 
         // [player_id][Y-m-d] = is_extra
         $marks = [];
@@ -289,10 +346,12 @@ class AttendanceController extends Controller
         $columns     = [];
         $activeDates = [];
         foreach ($sessions as $s) {
-            $key = $s->session_date->toDateString();
-            if (!$s->is_cancelled) {
-                $activeDates[$key] = true;
+            // client (Nov 2026): cancelled days are not shown in the register (only held / coming practices)
+            if ($s->is_cancelled) {
+                continue;
             }
+            $key = $s->session_date->toDateString();
+            $activeDates[$key] = true;
             $columns[] = [
                 'key'     => $key,
                 'date'    => $s->session_date,
@@ -316,6 +375,7 @@ class AttendanceController extends Controller
         foreach (array_keys($extraDates) as $date) {
             $columns[] = ['key' => $date, 'date' => Carbon::parse($date), 'type' => 'extra', 'slot' => null, 'moved' => false, 'session' => null];
         }
+
         usort($columns, fn ($a, $b) => [$a['key'], $a['type'] === 'cancelled'] <=> [$b['key'], $b['type'] === 'cancelled']);
 
         $todayKey = today()->toDateString();
@@ -330,10 +390,13 @@ class AttendanceController extends Controller
 
             foreach ($columns as $i => $c) {
                 $isMarked = isset($marks[$p->id][$c['key']]);
+                $inMonth  = $c['key'] >= $mFrom && $c['key'] <= $mTo;
+                [$a0, $e0, $h0] = [$attended, $expected, $hit];
 
                 if ($isMarked) {
                     $ownDay = $c['type'] === 'session' && $p->trainsOn($c['slot']);
-                    $cell   = $ownDay ? 'P' : 'E';
+                    $due    = isset($unpaid[$p->id][$c['key']]);
+                    $cell   = $ownDay ? ($due ? 'D' : 'P') : ($due ? 'G' : 'E');
                     $attended++;
                     $present[$i]++;
                     if ($ownDay) {
@@ -344,7 +407,7 @@ class AttendanceController extends Controller
                     // recorded absence (also one marked by hand on another day)
                     $cell = $absent[$p->id][$c['key']] ? 'A' : 'U';
                     $expected++;
-                } elseif ($c['type'] === 'cancelled') {
+                } elseif ($c['type'] === 'cancelled' || $c['type'] === 'none') {
                     $cell = 'X';
                 } elseif ($c['type'] === 'extra' || !$p->trainsOn($c['slot'])
                     || ($p->joined_at && $p->joined_at->toDateString() > $c['key'])) {
@@ -354,8 +417,13 @@ class AttendanceController extends Controller
                 } elseif ($c['key'] === $todayKey) {
                     $cell = 'T';
                 } else {
-                    $cell = ($absent[$p->id][$c['key']] ?? true) ? 'A' : 'U';
+                    // past practice of theirs without a record (e.g. an old day added later)
+                    $cell = 'M';
                     $expected++;
+                }
+                if (!$inMonth) {
+                    // other months on screen: shown, but not in this month's totals
+                    [$attended, $expected, $hit] = [$a0, $e0, $h0];
                 }
                 $cells[] = $cell;
             }
@@ -372,9 +440,12 @@ class AttendanceController extends Controller
 
         return [
             'month'   => $m->format('Y-m'),
+            'mFrom'   => $mFrom,
+            'mTo'     => $mTo,
             'monthTx' => $m->format('F Y'),
             'group'   => $group,
             'days'    => $days,
+            'sort'    => $sort,
             'columns' => $columns,
             'rows'    => $rows,
             'present' => $present,

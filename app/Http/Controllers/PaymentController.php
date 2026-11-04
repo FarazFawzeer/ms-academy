@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\Player;
 use App\Support\PlayerSessions;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -34,10 +35,20 @@ class PaymentController extends Controller
             'sessions' => 'required|integer|min:1|max:64',
             'method'   => 'required|in:cash,bank,card,online',
             'note'     => 'nullable|string|max:150',
+            'paid_on'  => 'nullable|date|before_or_equal:today',
+        ], [
+            'paid_on.before_or_equal' => 'The payment date cannot be in the future.',
         ]);
 
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
+        }
+
+        // Admin may enter an older payment (history from before the system); others always "now"
+        $paidAt = null;
+        $isAdmin = in_array($request->user()?->type, ['Super Admin', 'Admin'], true);
+        if ($isAdmin && $request->filled('paid_on') && Carbon::parse($request->input('paid_on'))->toDateString() !== today()->toDateString()) {
+            $paidAt = Carbon::parse($request->input('paid_on'))->setTime(12, 0);
         }
 
         [$payment, $balance] = Payment::record(
@@ -46,7 +57,8 @@ class PaymentController extends Controller
             (int) $request->input('sessions'),
             $request->input('method'),
             $request->input('note'),
-            $request->user()?->id
+            $request->user()?->id,
+            $paidAt
         );
 
         $player->sessions_balance = $balance;
@@ -57,6 +69,48 @@ class PaymentController extends Controller
             'balance'  => $balance,
             'badge'    => (string) $player->balanceBadge(),
             'undo_url' => route('admin.payments.undo', $payment),
+            'receipt_url' => route('admin.payments.receipt', $payment),
+        ]);
+    }
+
+    /** Printable receipt (client, 3 Nov 2026), like the academy's paper invoice. Print or save as PDF. */
+    public function receipt(Payment $payment)
+    {
+        $payment->load('player', 'receiver');
+        $player = $payment->player;
+        $plan   = $player ? $player->plan() : Player::planFor(null);
+        $perWeek = max(1, $player ? $player->remindThreshold() : 2);   // practices per week
+
+        $isExtra = $payment->method === 'extra';
+        $total   = $isExtra ? 0.0 : max((float) $plan['fee'], (float) $payment->amount);
+        $paid    = (float) $payment->amount;
+
+        $wa = null;
+        if ($player && $player->whatsapp_number) {
+            $text = config('academy.name') . ' - Payment receipt ' . $payment->receipt_no . "\n"
+                . $player->name . ' (' . $player->player_no . ")\n"
+                . ($isExtra ? 'Free extra days: ' . $payment->sessions : 'Paid: LKR ' . number_format($paid) . ' (' . ucfirst($payment->method) . ')')
+                . ' on ' . $payment->paid_at->format('d M Y') . "\n"
+                . 'Sessions: ' . $payment->sessions . ' (' . ceil($payment->sessions / $perWeek) . " weeks)\nThank you!";
+            $wa = 'https://wa.me/' . $player->whatsapp_number . '?text=' . rawurlencode($text);
+        }
+
+        // the practice days this payment pays for, grouped by week (Fri + Sun = 2 a week)
+        $dates = $isExtra ? [] : PlayerSessions::paymentDates($payment);
+        $weekRows = array_chunk($dates, $perWeek);
+
+        return view('payments.receipt', [
+            'weekRows' => $weekRows,
+            'payment' => $payment,
+            'player'  => $player,
+            'plan'    => $plan,
+            'weeks'   => (int) ceil($payment->sessions / $perWeek),
+            'perWeek' => $perWeek,
+            'isExtra' => $isExtra,
+            'total'   => $total,
+            'paid'    => $paid,
+            'balance' => max(0, $total - $paid),
+            'wa'      => $wa,
         ]);
     }
 

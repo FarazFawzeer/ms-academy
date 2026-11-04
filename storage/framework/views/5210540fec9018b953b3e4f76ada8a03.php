@@ -1,7 +1,10 @@
 
 <?php echo $__env->make('partials.js-helpers', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-<?php $defaultPlan = \App\Models\Player::planFor(null); ?>
+<?php
+    $defaultPlan = \App\Models\Player::planFor(null);
+    $payAdmin = in_array(auth()->user()?->type, ['Super Admin', 'Admin'], true);
+?>
 
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
@@ -46,6 +49,15 @@
                     </select>
                 </div>
 
+                <?php if($payAdmin): ?>
+                    <div class="mb-3">
+                        <label class="form-label" for="payDate">Paid on</label>
+                        <input type="date" name="paid_on" id="payDate" class="form-control" max="<?php echo e(today()->toDateString()); ?>"
+                            value="<?php echo e(today()->toDateString()); ?>">
+                        <div class="form-text">Change only when entering an older payment.</div>
+                    </div>
+                <?php endif; ?>
+
                 <div>
                     <label class="form-label" for="payNote">Note <span class="text-muted">(optional)</span></label>
                     <input type="text" name="note" id="payNote" maxlength="150" class="form-control" placeholder="Ex: paid by mother">
@@ -82,6 +94,14 @@
             document.querySelector('#payPlan span').textContent =
                 (plan.label ? plan.label + ': ' : '') + 'LKR ' + AC.fmt(plan.fee) + ' for ' + plan.sessions + ' sessions';
             box.innerHTML = '';
+            var pd = document.getElementById('payDate');
+            if (pd) {
+                var t = "<?php echo e(today()->toDateString()); ?>";
+                if (window.ACDate) ACDate.set(pd, t, {
+                    max: t
+                });
+                else pd.value = t;
+            }
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
         };
 
@@ -110,6 +130,9 @@
                     showConfirmButton: true,
                     confirmButtonText: 'Undo',
                     confirmButtonColor: '#475569',
+                    showDenyButton: !!d.receipt_url,
+                    denyButtonText: 'Receipt',
+                    denyButtonColor: '#0f766e',
                     timer: 12000,
                     timerProgressBar: true,
                     didOpen: function(t) {
@@ -117,6 +140,7 @@
                         t.addEventListener('mouseleave', Swal.resumeTimer);
                     }
                 }).then(async function(r) {
+                    if (r.isDenied && d.receipt_url) window.open(d.receipt_url, '_blank');
                     if (r.isConfirmed && d.undo_url) await undoPayment(d.undo_url, {
                         confirm: false
                     });

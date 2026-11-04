@@ -82,6 +82,7 @@ Route::middleware(['auth', SettlePracticeDays::class])->prefix('admin')->name('a
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
     // undo a payment entered by mistake: Admin any, others only their own from today (checked in the controller)
     Route::post('payments/{payment}/undo', [PaymentController::class, 'undo'])->whereNumber('payment')->name('payments.undo');
+    Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->whereNumber('payment')->name('payments.receipt');
 
     // Reminders (WhatsApp)
     Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
@@ -99,6 +100,7 @@ Route::middleware(['auth', SettlePracticeDays::class])->prefix('admin')->name('a
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->whereNumber('payment')->name('payments.destroy');
         Route::post('players/{player}/extra-days', [PaymentController::class, 'extraDays'])->whereNumber('player')->name('players.extra-days');
         Route::delete('players/{player}', [PlayerController::class, 'destroy'])->whereNumber('player')->name('players.destroy');
+        Route::post('attendance/register/rest-absent', [AttendanceController::class, 'restAbsent'])->name('attendance.register.rest-absent');
         Route::get('players/{player}/day', [PlayerController::class, 'dayInfo'])->whereNumber('player')->name('players.day-info');
         Route::post('players/{player}/day', [PlayerController::class, 'markDay'])->whereNumber('player')->name('players.day');
 

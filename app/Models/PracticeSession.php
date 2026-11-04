@@ -170,40 +170,57 @@ class PracticeSession extends Model
                 }
                 $closed++;
 
-                $s       = static::find($id);
-                $date    = $s->session_date->toDateString();
-                $present = Attendance::where('attendance_date', $date)->pluck('player_id')->flip();
-
-                $players = Player::active()
-                    ->trainingDays($s->slot)
-                    ->where(fn ($q) => $q->whereNull('joined_at')->orWhere('joined_at', '<=', $date))
-                    ->get(['id', 'dob', 'training_days', 'sessions_balance']);
-
-                foreach ($players as $p) {
-                    if (isset($present[$p->id])) {
-                        continue;
-                    }
-                    $counted = (int) $p->sessions_balance > 0;
-
-                    $inserted = DB::table('absences')->insertOrIgnore([
-                        'player_id'       => $p->id,
-                        'age_group'       => \App\Support\AgeGroup::forDob($p->dob, $date),
-                        'attendance_date' => $date,
-                        'counted'         => $counted,
-                        'created_at'      => now(),
-                    ]);
-
-                    if ($inserted && $counted) {
-                        DB::table('players')->where('id', $p->id)->decrement('sessions_balance');
-                        if ((int) $p->sessions_balance - 1 === $p->remindThreshold()) {
-                            DB::table('players')->where('id', $p->id)->update(['reminder_pending' => true]);
-                        }
-                    }
-                }
+                self::settleDay(static::find($id));
             });
         }
 
         return $closed;
+    }
+
+    /**
+     * Absent for everyone expected on this practice who was not marked: an active player who trains
+     * on it and had joined by then. Uses a session while they still have one (never below 0).
+     * Players who already have a record that day are skipped, so it is safe to run again.
+     * Used when a day is settled, and by the register's "Rest absent" button for days added later.
+     * Returns how many absences were written.
+     */
+    public static function settleDay(self $s): int
+    {
+        $date    = $s->session_date->toDateString();
+        $present = Attendance::where('attendance_date', $date)->pluck('player_id')->flip();
+
+        $players = Player::active()
+            ->trainingDays($s->slot === 'all' ? null : $s->slot)
+            ->where(fn ($q) => $q->whereNull('joined_at')->orWhere('joined_at', '<=', $date))
+            ->get(['id', 'dob', 'training_days', 'sessions_balance']);
+
+        $written = 0;
+        foreach ($players as $p) {
+            if (isset($present[$p->id])) {
+                continue;
+            }
+            $counted = (int) $p->sessions_balance > 0;
+
+            $inserted = DB::table('absences')->insertOrIgnore([
+                'player_id'       => $p->id,
+                'age_group'       => \App\Support\AgeGroup::forDob($p->dob, $date),
+                'attendance_date' => $date,
+                'counted'         => $counted,
+                'created_at'      => now(),
+            ]);
+
+            if ($inserted) {
+                $written++;
+            }
+            if ($inserted && $counted) {
+                DB::table('players')->where('id', $p->id)->decrement('sessions_balance');
+                if ((int) $p->sessions_balance - 1 === $p->remindThreshold()) {
+                    DB::table('players')->where('id', $p->id)->update(['reminder_pending' => true]);
+                }
+            }
+        }
+
+        return $written;
     }
 
     /* ---------- helpers ---------- */

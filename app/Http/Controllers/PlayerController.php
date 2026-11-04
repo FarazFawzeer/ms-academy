@@ -21,16 +21,23 @@ class PlayerController extends Controller
         $status = $request->query('status', 'active');
         $group  = $request->query('group');
         $days   = $request->query('days');
+        // client (Nov 2026): first added first by default (the order they joined); filter by when added
+        $sort   = in_array($request->query('sort'), ['newest', 'name'], true) ? $request->query('sort') : 'oldest';
+        $added  = in_array($request->query('added'), ['today', 'week', 'month'], true) ? $request->query('added') : null;
+        $since  = ['today' => today(), 'week' => today()->subDays(6), 'month' => today()->subDays(29)][$added] ?? null;
 
         $players = Player::query()
             ->select('id', 'player_no', 'name', 'dob', 'guardian_name', 'guardian_phone', 'photo_path',
-                'training_days', 'sessions_balance', 'reminder_pending', 'is_active')
+                'training_days', 'sessions_balance', 'reminder_pending', 'is_active', 'created_at')
             ->search($request->query('q'))
             ->inAgeGroup($group)
             ->trainingDays($days)
             ->when($status === 'active', fn ($q) => $q->where('is_active', true))
             ->when($status === 'inactive', fn ($q) => $q->where('is_active', false))
-            ->orderBy('name')
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
+            ->when($sort === 'name', fn ($q) => $q->orderBy('name'))
+            ->when($sort === 'oldest', fn ($q) => $q->orderBy('created_at')->orderBy('id'))
+            ->when($sort === 'newest', fn ($q) => $q->orderByDesc('created_at')->orderByDesc('id'))
             ->paginate(15)
             ->withQueryString();
 
@@ -39,6 +46,8 @@ class PlayerController extends Controller
             'status'  => $status,
             'group'   => $group,
             'days'    => $days,
+            'sort'    => $sort,
+            'added'   => $added,
             'groups'  => AgeGroup::all(),
             'slots'   => PracticeSession::slots(),
         ]);
@@ -255,6 +264,7 @@ class PlayerController extends Controller
             'success' => true,
             'message' => $day . ' marked ' . $what . '. ' . $balance . ' session(s) left.',
             'badge'   => (string) $player->balanceBadge(),
+            'balance' => $balance,
         ]);
     }
 

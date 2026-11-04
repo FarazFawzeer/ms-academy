@@ -344,9 +344,7 @@
                                     <th>Sessions</th>
                                     <th class="d-none d-sm-table-cell">Method</th>
                                     <th class="d-none d-md-table-cell">Note</th>
-                                    @if ($payments->contains(fn($x) => $x->canBeUndoneBy(auth()->user())))
-                                        <th class="text-end">Actions</th>
-                                    @endif
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -357,9 +355,12 @@
                                         <td>+{{ $pay->sessions }}</td>
                                         <td class="d-none d-sm-table-cell">{{ $methods[$pay->method] ?? ucfirst($pay->method) }}</td>
                                         <td class="d-none d-md-table-cell text-muted">{{ $pay->note ?? '-' }}</td>
-                                        @if ($payments->contains(fn($x) => $x->canBeUndoneBy(auth()->user())))
                                             <td>
                                                 <div class="ac-actions">
+                                                    <a href="{{ route('admin.payments.receipt', $pay) }}" target="_blank" class="btn btn-sm btn-soft-primary"
+                                                        title="Print or share the receipt">
+                                                        <iconify-icon icon="solar:document-text-outline"></iconify-icon><span class="ac-hide-xs">Receipt</span>
+                                                    </a>
                                                     @if ($pay->canBeUndoneBy(auth()->user()))
                                                         <button type="button" class="btn btn-sm btn-soft-danger btn-undo-pay"
                                                         data-url="{{ route('admin.payments.undo', $pay) }}" title="Undo this payment (entered by mistake)">
@@ -368,11 +369,10 @@
                                                     @endif
                                                 </div>
                                             </td>
-                                        @endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted py-3">No payments yet.</td>
+                                        <td colspan="6" class="text-center text-muted py-3">No payments yet.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

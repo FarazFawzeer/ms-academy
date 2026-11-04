@@ -399,7 +399,8 @@
                 <div>
                     <h5 class="card-title mb-0">Practice Calendar</h5>
                     <p class="card-subtitle mb-0">Tap the days, choose who the practice is for, then press <strong>Add
-                            practice</strong> once. Tap existing days to cancel or remove them.</p>
+                            practice</strong> once. Tap existing days to cancel or remove them. Old dates work too: past days
+                        you add are filled in on the Attendance Register.</p>
                 </div>
                 <div class="cal-nav">
                     <a href="{{ route('admin.schedule.index', ['month' => $prevMonth, 'view' => $view]) }}" class="btn btn-light btn-sm"
@@ -427,7 +428,7 @@
                 <span><i class="sel"></i>Selected</span>
             </div>
 
-            <div class="cal-grid" id="calGrid">
+            <div class="cal-grid" id="calGrid" data-old-month="{{ $month->lt(today()->startOfMonth()) ? 1 : 0 }}">
                 @foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $wd)
                     <div class="cal-wd">{{ $wd }}</div>
                 @endforeach
@@ -708,7 +709,7 @@
                 f.slot.disabled = !isNew;
                 // a locked date is sent unchanged (readonly, not disabled, so it is still posted)
                 ACDate.set(f.date, v.date || null, {
-                    min: isNew || v.locked !== '1' ? today : null,
+                    min: null, // old dates are allowed too (history from before the system)
                     locked: v.locked === '1'
                 });
                 document.getElementById('psLockHint').classList.toggle('d-none', v.locked !== '1');
@@ -831,7 +832,7 @@
                     return st.some(f);
                 };
                 setOn('add', has(function(x) {
-                    return x.state !== 'active' && x.past === '0';
+                    return x.state !== 'active';
                 }));
                 setOn('cancel', has(function(x) {
                     return x.state === 'active' && x.marked === '0';
@@ -840,7 +841,7 @@
                     return x.state === 'cancelled';
                 }));
                 setOn('remove', has(function(x) {
-                    return x.state !== 'none' && x.past === '0' && x.marked === '0';
+                    return x.state !== 'none' && x.marked === '0';
                 }));
 
                 // suggest the group from the days picked (all Fridays -> Friday players, etc.)
@@ -886,12 +887,13 @@
                 refresh();
             });
 
-            // quick select: all Fridays / Sundays of this month from today on (56 = both)
+            // quick select: all Fridays / Sundays of this month (56 = both) - from today on in this month,
+            // every one of them in an earlier month (entering old practice days)
             document.querySelectorAll('[data-pick-weekday]').forEach(function(b) {
                 b.addEventListener('click', function() {
                     var want = b.dataset.pickWeekday === '56' ? ['5', '0'] : [b.dataset.pickWeekday];
                     days.forEach(function(d) {
-                        if (want.indexOf(d.dataset.weekday) !== -1 && d.dataset.past === '0') picked.add(d.dataset.date);
+                        if (want.indexOf(d.dataset.weekday) !== -1 && (d.dataset.past === '0' || grid.dataset.oldMonth === '1')) picked.add(d.dataset.date);
                     });
                     delete bar.dataset.touched;
                     refresh();

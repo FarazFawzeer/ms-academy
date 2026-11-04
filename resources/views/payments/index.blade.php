@@ -193,9 +193,7 @@
                             <th>Amount (LKR)</th>
                             <th class="d-none d-sm-table-cell">Sessions</th>
                             <th class="d-none d-md-table-cell">Method</th>
-                            @if ($canUndoAny)
-                                <th class="text-end">Actions</th>
-                            @endif
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -216,9 +214,11 @@
                                     <span class="pay-badge"
                                         style="background:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}1a;color:{{ $methodColors[strtolower($p->method)] ?? '#4b5563' }}">{{ $p->method === 'extra' ? 'Extra days' : ucfirst($p->method) }}</span>
                                 </td>
-                                @if ($canUndoAny)
-                                    <td>
+                                <td>
                                         <div class="ac-actions">
+                                            <a href="{{ route('admin.payments.receipt', $p) }}" target="_blank" class="btn btn-sm btn-soft-primary" title="Print or share the receipt">
+                                                <iconify-icon icon="solar:document-text-outline"></iconify-icon><span class="ac-hide-xs">Receipt</span>
+                                            </a>
                                             @if ($p->canBeUndoneBy(auth()->user()))
                                                 <button type="button" class="btn btn-sm btn-soft-danger btn-undo-pay"
                                                     data-url="{{ route('admin.payments.undo', $p) }}" title="Undo this payment (entered by mistake)">
@@ -227,11 +227,10 @@
                                             @endif
                                         </div>
                                     </td>
-                                @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $canUndoAny ? 6 : 5 }}" class="text-center text-muted py-4">No payments in this
+                                <td colspan="6" class="text-center text-muted py-4">No payments in this
                                     period.</td>
                             </tr>
                         @endforelse

@@ -129,7 +129,20 @@
                     <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All</option>
                 </select>
 
-                @if (request('q') || $group || $days || (request('status') && request('status') !== 'active'))
+                <select name="added" class="form-select pl-select" onchange="this.form.submit()" aria-label="Added">
+                    <option value="">Added: any time</option>
+                    <option value="today" {{ $added === 'today' ? 'selected' : '' }}>Added today</option>
+                    <option value="week" {{ $added === 'week' ? 'selected' : '' }}>Added last 7 days</option>
+                    <option value="month" {{ $added === 'month' ? 'selected' : '' }}>Added last 30 days</option>
+                </select>
+
+                <select name="sort" class="form-select pl-select" onchange="this.form.submit()" aria-label="Order">
+                    <option value="">First added first</option>
+                    <option value="newest" {{ $sort === 'newest' ? 'selected' : '' }}>Newest added first</option>
+                    <option value="name" {{ $sort === 'name' ? 'selected' : '' }}>Name A-Z</option>
+                </select>
+
+                @if (request('q') || $group || $days || $added || $sort !== 'oldest' || (request('status') && request('status') !== 'active'))
                     <a href="{{ route('admin.players.index') }}" class="pl-clear">
                         <iconify-icon icon="solar:close-circle-outline"></iconify-icon> Clear
                     </a>
@@ -163,6 +176,9 @@
                                                 @endunless
                                             </span>
                                             <span class="sub d-block">{{ $p->player_no }} &middot; {{ $p->age }} yrs</span>
+                                            @if ($p->created_at)
+                                                <span class="sub d-block" style="font-size:11px">Added {{ $p->created_at->format('d M Y, g:i A') }}</span>
+                                            @endif
                                             {{-- phones: group and sessions under the name --}}
                                             <span class="d-flex d-sm-none gap-1 mt-1" data-balance="{{ $p->id }}">{{ $p->balanceBadge() }}</span>
                                         </span>
