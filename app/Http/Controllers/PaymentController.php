@@ -61,6 +61,10 @@ class PaymentController extends Controller
             $paidAt
         );
 
+        if ($paidAt) {
+            // paid on an earlier day: absences after that day may now use this package
+            $balance = DB::transaction(fn () => PlayerSessions::recount($player));
+        }
         $player->sessions_balance = $balance;
 
         return response()->json([
@@ -76,6 +80,20 @@ class PaymentController extends Controller
     /** Printable receipt (client, 3 Nov 2026), like the academy's paper invoice. Print or save as PDF. */
     public function receipt(Payment $payment)
     {
+        return view('payments.receipt', $this->receiptData($payment) + ['public' => false]);
+    }
+
+    /**
+     * The same receipt for the parent, without a login: the link in the WhatsApp message carries a
+     * signature, so only someone who got the link can open it (client, 20 Nov 2026).
+     */
+    public function publicReceipt(Payment $payment)
+    {
+        return view('payments.receipt', $this->receiptData($payment) + ['public' => true]);
+    }
+
+    private function receiptData(Payment $payment): array
+    {
         $payment->load('player', 'receiver');
         $player = $payment->player;
         $plan   = $player ? $player->plan() : Player::planFor(null);
@@ -85,13 +103,17 @@ class PaymentController extends Controller
         $total   = $isExtra ? 0.0 : max((float) $plan['fee'], (float) $payment->amount);
         $paid    = (float) $payment->amount;
 
+        // parent's link: opens the receipt without a login, with a Download PDF button
+        $shareUrl = url(\Illuminate\Support\Facades\URL::signedRoute('receipt.public', ['payment' => $payment->id], null, false));
+
         $wa = null;
         if ($player && $player->whatsapp_number) {
             $text = config('academy.name') . ' - Payment receipt ' . $payment->receipt_no . "\n"
                 . $player->name . ' (' . $player->player_no . ")\n"
                 . ($isExtra ? 'Free extra days: ' . $payment->sessions : 'Paid: LKR ' . number_format($paid) . ' (' . ucfirst($payment->method) . ')')
                 . ' on ' . $payment->paid_at->format('d M Y') . "\n"
-                . 'Sessions: ' . $payment->sessions . ' (' . ceil($payment->sessions / $perWeek) . " weeks)\nThank you!";
+                . 'Sessions: ' . $payment->sessions . ' (' . ceil($payment->sessions / $perWeek) . " weeks)\n"
+                . 'Receipt (PDF): ' . $shareUrl . "\nThank you!";
             $wa = 'https://wa.me/' . $player->whatsapp_number . '?text=' . rawurlencode($text);
         }
 
@@ -99,7 +121,8 @@ class PaymentController extends Controller
         $dates = $isExtra ? [] : PlayerSessions::paymentDates($payment);
         $weekRows = array_chunk($dates, $perWeek);
 
-        return view('payments.receipt', [
+        return [
+            'shareUrl' => $shareUrl,
             'weekRows' => $weekRows,
             'payment' => $payment,
             'player'  => $player,
@@ -111,7 +134,7 @@ class PaymentController extends Controller
             'paid'    => $paid,
             'balance' => max(0, $total - $paid),
             'wa'      => $wa,
-        ]);
+        ];
     }
 
     /**
@@ -182,8 +205,12 @@ class PaymentController extends Controller
         $balance = DB::transaction(function () use ($payment, $player) {
             Player::whereKey($payment->player_id)->decrement('sessions_balance', $payment->sessions);
             $payment->delete();
+            if (!$player) {
+                return 0;
+            }
+            PlayerSessions::recount($player);
 
-            return $player ? PlayerSessions::refreshReminder($player, true) : 0;
+            return PlayerSessions::refreshReminder($player, true);
         });
 
         if ($player) {

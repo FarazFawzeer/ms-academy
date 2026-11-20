@@ -72,6 +72,21 @@
             color: #fff;
         }
 
+        .b-wa2 {
+            background: #fff;
+            color: #15803d;
+            box-shadow: inset 0 0 0 1.5px #16a34a;
+        }
+
+        .d-none {
+            display: none !important;
+        }
+
+        .bar button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
         .b-back {
             background: #fff;
             color: #334155;
@@ -475,15 +490,27 @@
 
 <body>
     <div class="bar">
-        <button type="button" class="b-print" onclick="window.print()">&#128424; Print / Save as PDF</button>
-        <?php if($wa): ?>
-            <a class="b-wa" href="<?php echo e($wa); ?>" target="_blank" rel="noopener">&#9990; Send on WhatsApp</a>
-        <?php endif; ?>
-        <?php if($player): ?>
-            <a class="b-back" href="<?php echo e(route('admin.players.show', $player)); ?>">&larr; Back to profile</a>
+        <button type="button" class="b-wa d-none" id="btnShare">&#10148; Share PDF (WhatsApp)</button>
+        <button type="button" class="b-print" id="btnPdf">&#11015; Download PDF</button>
+        <?php if (! ($public)): ?>
+            <?php if($wa): ?>
+                <a class="b-wa2" href="<?php echo e($wa); ?>" target="_blank" rel="noopener">&#9990; Send link to parent</a>
+            <?php endif; ?>
+            <button type="button" class="b-back" onclick="window.print()">&#128424; Print</button>
+            <?php if($player): ?>
+                <a class="b-back" href="<?php echo e(route('admin.players.show', $player)); ?>">&larr; Back to profile</a>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
-    <p class="hint">To send it as a file: Print &rarr; "Save as PDF", then share the PDF.</p>
+    <p class="hint" id="pdfHint">
+        <?php if($public): ?>
+            Tap "Download PDF" to save this receipt.
+        <?php else: ?>
+            <span class="share-yes d-none"><b>Share PDF</b> attaches the receipt file - pick WhatsApp, then the parent.</span>
+            <span class="share-no">Download the PDF, then attach it in WhatsApp.</span>
+            <b>Send link to parent</b> opens the parent's chat with a message and a link to this receipt.
+        <?php endif; ?>
+    </p>
 
     <div class="sheet">
         <div class="head">
@@ -607,6 +634,133 @@
 
         <p class="thanks">Thank you! &middot; <?php echo e($academy); ?></p>
     </div>
+    <script>
+        // Receipt as a real PDF file (client, 20 Nov 2026): drawn from the page in the browser, then
+        // shared (phone share sheet: WhatsApp -> the parent, with the file attached) or downloaded.
+        (function() {
+            var name = <?php echo json_encode('Receipt-' . $payment->receipt_no . '-' . \Illuminate\Support\Str::slug($player?->name ?? 'player') . '.pdf', 15, 512) ?>;
+            var text = <?php echo json_encode(config('academy.name') . ' - payment receipt ' . $payment->receipt_no . ($player ? ' for ' . $player->name : ''), 15, 512) ?>;
+            var libs = null;
+
+            function load(src) {
+                return new Promise(function(ok, bad) {
+                    var s = document.createElement('script');
+                    s.src = src;
+                    s.onload = ok;
+                    s.onerror = bad;
+                    document.head.appendChild(s);
+                });
+            }
+
+            function ready() {
+                libs = libs || Promise.all([
+                    load('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+                    load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+                ]);
+                return libs;
+            }
+
+            // A5 page, the receipt drawn at computer width so it looks the same on every phone
+            async function makePdf() {
+                await ready();
+                var sheet = document.querySelector('.sheet');
+                var canvas = await html2canvas(sheet, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    windowWidth: 860,
+                    onclone: function(doc) {
+                        var c = doc.querySelector('.sheet');
+                        c.style.width = '780px';
+                        c.style.maxWidth = '780px';
+                        c.style.margin = '0';
+                    }
+                });
+                var pdf = new window.jspdf.jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a5'
+                });
+                var pw = 148,
+                    ph = 210,
+                    m = 6;
+                var w = pw - m * 2,
+                    h = canvas.height * w / canvas.width;
+                if (h > ph - m * 2) {
+                    h = ph - m * 2;
+                    w = canvas.width * h / canvas.height;
+                }
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (pw - w) / 2, m, w, h);
+                return pdf.output('blob');
+            }
+
+            function busy(btn, on, label) {
+                btn.disabled = on;
+                if (on) {
+                    btn.dataset.t = btn.innerHTML;
+                    btn.innerHTML = label;
+                } else if (btn.dataset.t) {
+                    btn.innerHTML = btn.dataset.t;
+                }
+            }
+
+            var shareBtn = document.getElementById('btnShare');
+            var pdfBtn = document.getElementById('btnPdf');
+            var canShareFiles = false;
+            try {
+                canShareFiles = !!(navigator.canShare && navigator.canShare({
+                    files: [new File(['x'], 'x.pdf', {
+                        type: 'application/pdf'
+                    })]
+                }));
+            } catch (e) {}
+            if (canShareFiles) {
+                shareBtn.classList.remove('d-none');
+                document.querySelectorAll('.share-yes').forEach(function(el) {
+                    el.classList.remove('d-none');
+                });
+                document.querySelectorAll('.share-no').forEach(function(el) {
+                    el.classList.add('d-none');
+                });
+            }
+
+            shareBtn.addEventListener('click', async function() {
+                busy(shareBtn, true, 'Making PDF...');
+                try {
+                    var blob = await makePdf();
+                    await navigator.share({
+                        files: [new File([blob], name, {
+                            type: 'application/pdf'
+                        })],
+                        title: name,
+                        text: text
+                    });
+                } catch (e) {
+                    if (e && e.name !== 'AbortError') alert('Could not share the PDF here. Use "Download PDF" and attach it in WhatsApp.');
+                }
+                busy(shareBtn, false);
+            });
+
+            pdfBtn.addEventListener('click', async function() {
+                busy(pdfBtn, true, 'Making PDF...');
+                try {
+                    var blob = await makePdf();
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = name;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function() {
+                        URL.revokeObjectURL(a.href);
+                        a.remove();
+                    }, 1500);
+                } catch (e) {
+                    alert('Could not make the PDF (no internet?). Use Print > Save as PDF instead.');
+                }
+                busy(pdfBtn, false);
+            });
+        })();
+    </script>
 </body>
 
 </html>

@@ -86,6 +86,9 @@ class PlayerController extends Controller
 
                 $this->applyPackage($player, $mode, $plan, $request, 'First payment on joining');
 
+                // joined in the past: practices they missed since then are absent (client, 20 Nov 2026)
+                PlayerSessions::fillPastAbsences($player->refresh());
+
                 return $player;
             });
         } catch (\RuntimeException $e) {
@@ -166,6 +169,11 @@ class PlayerController extends Controller
             }
 
             $this->applyPackage($player, $mode, $plan, $request, 'Payment added from Edit Player');
+
+            // earlier joining date or new training days: missed practices become absent
+            if ($daysChanged) {
+                PlayerSessions::fillPastAbsences($player->refresh());
+            }
         });
 
         return response()->json([
@@ -255,7 +263,12 @@ class PlayerController extends Controller
         $ownDay  = $session && $player->trainsOn($session->slot);
         $day     = Carbon::parse($date)->format('D, d M Y');
 
-        $balance = DB::transaction(fn () => PlayerSessions::setDay($player, $date, $status, $request->user()?->id));
+        $balance = DB::transaction(function () use ($player, $date, $status, $request) {
+            PlayerSessions::setDay($player, $date, $status, $request->user()?->id);
+
+            // an old day changes what came after it: work out the sessions again in date order
+            return PlayerSessions::recount($player);
+        });
         $player->sessions_balance = $balance;
 
         $what = ['present' => 'present' . ($session && !$ownDay ? ' (extra day)' : ''), 'absent' => 'absent', 'clear' => 'cleared'][$status];

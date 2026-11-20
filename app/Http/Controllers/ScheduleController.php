@@ -270,9 +270,14 @@ class ScheduleController extends Controller
      */
     private function closeIfPast(PracticeSession $s): void
     {
-        if ($s->session_date->toDateString() < today()->toDateString() && !$s->closed_at) {
-            $s->forceFill(['closed_at' => now()])->save();
+        if ($s->is_cancelled || $s->session_date->toDateString() >= today()->toDateString() || $s->closed_at) {
+            return;
         }
+        // client (20 Nov 2026): missed old days are absent automatically - tap Present in the register
+        // for the players who came (that swaps the absence for a present and puts the session back)
+        $s->forceFill(['closed_at' => now()])->save();
+        PracticeSession::settleDay($s);
+        \App\Support\PlayerSessions::recountDate($s->session_date->toDateString());
     }
 
     private function timeRules(): array

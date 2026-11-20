@@ -193,6 +193,117 @@ class PlayerSessions
         return $out;
     }
 
+    /**
+     * Client (20 Nov 2026): every practice the player should have come to (their training day, on or
+     * after joining, held, already over) has a record. A day without one becomes "absent" - also for
+     * players added later with an old joining date and for old practice days added to the schedule.
+     * Then recount() decides which absences use a session. Returns how many absences were written.
+     */
+    public static function fillPastAbsences(Player $player): int
+    {
+        if (!$player->is_active) {
+            return 0;
+        }
+        $joined = $player->joined_at?->toDateString();
+
+        $marked = DB::table('attendances')->where('player_id', $player->id)->pluck('attendance_date')
+            ->concat(DB::table('absences')->where('player_id', $player->id)->pluck('attendance_date'))
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())->flip();
+
+        $rows = [];
+        PracticeSession::where('is_cancelled', false)
+            ->where('session_date', '<', today()->toDateString())
+            ->when($joined, fn ($q) => $q->where('session_date', '>=', $joined))
+            ->get(['session_date', 'slot'])
+            ->each(function ($s) use ($player, $marked, &$rows) {
+                $d = $s->session_date->toDateString();
+                if ($player->trainsOn($s->slot) && !isset($marked[$d]) && !isset($rows[$d])) {
+                    $rows[$d] = [
+                        'player_id'       => $player->id,
+                        'age_group'       => AgeGroup::forDob($player->dob, $d),
+                        'attendance_date' => $d,
+                        'counted'         => false,   // recount() sets it
+                        'created_at'      => now(),
+                    ];
+                }
+            });
+
+        foreach (array_chunk(array_values($rows), 200) as $chunk) {
+            DB::table('absences')->insertOrIgnore($chunk);
+        }
+        self::recount($player);
+
+        return count($rows);
+    }
+
+    /**
+     * Works out again, in date order, which absences use a session: payments add their sessions on the
+     * day they were paid, every present day uses one, an absent day uses one only while sessions are
+     * left. Sessions entered as "already used" (no date) are used first. Needed when old days, old
+     * payments or old marks are entered later, so the order is the real one and not the typing order.
+     * Updates absences.counted and the balance; returns the new balance.
+     */
+    public static function recount(Player $player): int
+    {
+        $pid  = $player->id;
+        $pays = DB::table('payments')->where('player_id', $pid)->get(['paid_at', 'sessions']);
+        $att  = DB::table('attendances')->where('player_id', $pid)->pluck('attendance_date');
+        $abs  = DB::table('absences')->where('player_id', $pid)->get(['id', 'attendance_date', 'counted']);
+
+        $paid    = (int) $pays->sum('sessions');
+        $counted = $abs->filter(fn ($a) => (int) $a->counted === 1)->count();
+        $undated = max(0, $paid - $att->count() - $counted - self::balance($player));
+
+        // [date, order on that day (payment first), change, absence id]
+        $events = [];
+        foreach ($pays as $p) {
+            $events[] = [Carbon::parse($p->paid_at)->toDateString(), 0, (int) $p->sessions, null];
+        }
+        foreach ($att as $d) {
+            $events[] = [Carbon::parse($d)->toDateString(), 1, -1, null];
+        }
+        foreach ($abs as $a) {
+            $events[] = [Carbon::parse($a->attendance_date)->toDateString(), 1, 0, $a];
+        }
+        usort($events, fn ($x, $y) => [$x[0], $x[1]] <=> [$y[0], $y[1]]);
+
+        $run = -$undated;
+        $on  = [];
+        $off = [];
+        foreach ($events as [$d, $o, $delta, $a]) {
+            if ($a === null) {
+                $run += $delta;
+                continue;
+            }
+            $use = $run > 0;
+            if ($use) {
+                $run--;
+            }
+            if ($use !== ((int) $a->counted === 1)) {
+                $use ? $on[] = $a->id : $off[] = $a->id;
+            }
+        }
+
+        foreach (array_chunk($on, 500) as $c) {
+            DB::table('absences')->whereIn('id', $c)->update(['counted' => true]);
+        }
+        foreach (array_chunk($off, 500) as $c) {
+            DB::table('absences')->whereIn('id', $c)->update(['counted' => false]);
+        }
+        DB::table('players')->where('id', $pid)->update(['sessions_balance' => $run]);
+
+        return self::refreshReminder($player);
+    }
+
+    /** Recount everyone who has an absence on one date (after a day was settled out of order). */
+    public static function recountDate(string $date): void
+    {
+        $ids = DB::table('absences')->where('attendance_date', $date)->pluck('player_id');
+        foreach (Player::whereIn('id', $ids)->get() as $p) {
+            self::recount($p);
+        }
+    }
+
     public static function balance(Player $player): int
     {
         return (int) DB::table('players')->where('id', $player->id)->value('sessions_balance');

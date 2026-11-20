@@ -259,7 +259,10 @@ class AttendanceController extends Controller
             if (!$session->closed_at) {
                 $session->forceFill(['closed_at' => now()])->save();   // never settled a second time
             }
-            return PracticeSession::settleDay($session);
+            $n = PracticeSession::settleDay($session);
+            \App\Support\PlayerSessions::recountDate($session->session_date->toDateString());
+
+            return $n;
         });
 
         return response()->json([

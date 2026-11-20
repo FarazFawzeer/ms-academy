@@ -31,6 +31,10 @@ Route::get('/login', function () {
 Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+// Parent's receipt link from WhatsApp: no login, but only valid with its signature
+Route::get('/r/{payment}', [PaymentController::class, 'publicReceipt'])->whereNumber('payment')
+    ->middleware('signed:relative')->name('receipt.public');
+
 // Lock screen (needs a logged-in user; posts to login.post to unlock)
 Route::get('/auth/lock-screen', fn () => view('auth.lock-screen'))->middleware('auth')->name('lock-screen');
 
